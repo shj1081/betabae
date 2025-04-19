@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 import { LlmService } from '../llm/llm.service';
 import { ChatAnalysisRequestDto } from 'src/dto/chat/chat-analysis.request.dto';
 import { ChatAnalysisResponseDto } from 'src/dto/chat/chat-analysis.response.dto';
+import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
+import { ExceptionCode } from 'src/enums/custom.exception.code';
 
 @Injectable()
 export class ChatAnalysisService {
@@ -17,14 +19,19 @@ export class ChatAnalysisService {
       where: { id: dto.messageId },
       include: { conversation: true },
     });
-    if (!message) throw new Error('Message not found');
+
+    if (!message) throw new BadRequestException(new ErrorResponseDto(
+      ExceptionCode.CHAT_ANALYSIS_MESSAGE_NOT_FOUND,
+      'Message not found',
+    ));
+
+    // not allow the message of file attachment
     if (message.attachment_media_id) {
-      // Custom exception for file/attachment in analysis request
-      const { ErrorResponseDto } = await import('src/dto/common/error.response.dto');
-      const { ExceptionCode } = await import('src/enums/custom.exception.code');
-      throw new ErrorResponseDto(
-        ExceptionCode.CHAT_ANALYSIS_FILE_NOT_SUPPORTED,
-        'File/attachment messages are not supported for chat analysis.',
+      throw new BadRequestException(
+        new ErrorResponseDto(
+          ExceptionCode.CHAT_ANALYSIS_FILE_NOT_SUPPORTED,
+          'File/attachment messages are not supported for chat analysis.',
+        ),
       );
     }
     const conversationId = message.conversation_id;

@@ -10,6 +10,7 @@ export class FeedService {
   async getHighlyCompatibleUsers(currentUserId: number, filters: FeedFilterDto): Promise<FeedUserDto[]> {
     // Fetch all users except the current user
     const users = await this.userService.getAllUsersExcept(currentUserId);
+
     // Map to FeedUserDto with mock compatibilityScore
     const feedUsers: FeedUserDto[] = users.map((user: any) => ({
       id: user.id,
@@ -21,6 +22,7 @@ export class FeedService {
       profileImageUrl: user.profile?.profile_image?.file_url || null,
       compatibilityScore: Math.floor(Math.random() * 21) + 80, // mock: 80~100
     }));
+    
     // Apply filtering
     return feedUsers.filter(user => {
       if (filters.age && user.age !== filters.age) return false;
