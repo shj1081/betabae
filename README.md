@@ -2,6 +2,7 @@
 
 ## Tech Stacks
 
+- Frontend: React Native (TypeScript)
 - Backend: NestJS (TypeScript)
 - Database: MySQL (Prisma ORM)
 - Infrastructure: Redis, S3/MinIO, Docker, Docker Compose
