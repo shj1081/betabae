@@ -14,7 +14,7 @@ down-v:
 reset: down up
 
 # NestJS backend path helper
-BACKEND_PATH=app/backend
+BACKEND_PATH=backend
 
 # NestJS commands
 install:
