@@ -21,7 +21,7 @@ interface AuthenticatedSocket extends Socket {
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: ['http://localhost:8081', 'http://localhost:19006', 'http://localhost:19000'],
     credentials: true,
   },
   namespace: 'chat',
@@ -126,6 +126,15 @@ export class ChatGateway
     const { conversationId } = data;
     client.leave(`conversation:${conversationId}`);
     return { success: true };
+  }
+
+  @SubscribeMessage('getUserId')
+  getUserId(@ConnectedSocket() client: AuthenticatedSocket) {
+    if (!client.userId) {
+      return { success: false, message: 'User not authenticated' };
+    }
+    
+    return { success: true, userId: client.userId };
   }
 
  

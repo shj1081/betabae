@@ -47,3 +47,30 @@ fast-setup:
 	make install
 	make prisma-migrate
 	make dev
+
+# Frontend (ui) commands
+UI_PATH=ui
+
+ui-install:
+	cd $(UI_PATH) && npm install
+
+ui-start:
+	cd $(UI_PATH) && npm run start
+
+ui-web:
+	cd $(UI_PATH) && npm run web
+
+ui-android:
+	cd $(UI_PATH) && npm run android
+
+ui-ios:
+	cd $(UI_PATH) && npm run ios
+
+ui-lint:
+	cd $(UI_PATH) && npm run lint
+
+ui-test:
+	cd $(UI_PATH) && npm run test
+
+ui-reset:
+	cd $(UI_PATH) && npm run reset-project

@@ -22,6 +22,9 @@ import { AuthGuard } from '../auth/auth.guard';
 import { ChatService } from './chat.service';
 import { ChatAnalysisService } from './chat-analysis.service';
 import { ChatAnalysisRequestDto } from 'src/dto/chat/chat-analysis.request.dto';
+import { CreateConversationRequestDto } from 'src/dto/chat/create-conversation.request.dto';
+import { ConversationType, MatchStatus } from '@prisma/client';
+import { PrismaService } from 'src/infra/prisma/prisma.service';
 
 @Controller('chat/conversations')
 @UseGuards(AuthGuard)
@@ -29,6 +32,7 @@ export class ChatController {
   constructor(
     private readonly chatService: ChatService,
     private readonly chatAnalysisService: ChatAnalysisService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -118,8 +122,6 @@ export class ChatController {
     return new BasicResponseDto('Message processed successfully', message);
   }
 
-
-
   /**
    * Send an image message to a specific conversation. This endpoint is called when the user sends an image message.
    * 
@@ -173,5 +175,114 @@ export class ChatController {
     const userId = Number(req['user'].id);
     const result = await this.chatAnalysisService.analyzeChat(dto, userId);
     return new BasicResponseDto('Chat analysis completed', result);
+  }
+
+  /**
+   * TEST ENDPOINT: Create a new conversation for testing purposes.
+   * This endpoint creates a match between the current user and the target user if one doesn't exist,
+   * then creates a conversation for that match.
+   * 
+   * @param req The request object.
+   * @param dto The data transfer object containing the target user ID and optional conversation type.
+   * @returns A BasicResponseDto containing the created conversation.
+   */
+  @Post('test/create')
+  async createTestConversation(
+    @Req() req: Request,
+    @Body() dto: CreateConversationRequestDto,
+  ) {
+    const currentUserId = Number(req['user'].id);
+    const targetUserId = dto.targetUserId;
+    const conversationType = dto.type || ConversationType.REAL_BAE;
+    
+    // Check if users exist
+    const currentUser = await this.prisma.user.findUnique({
+      where: { id: currentUserId },
+    });
+
+    if (!currentUser) {
+      throw new BadRequestException(
+        new ErrorResponseDto(
+          ExceptionCode.USER_NOT_FOUND,
+          `Current user with ID ${currentUserId} not found`,
+        ),
+      );
+    }
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+
+    if (!targetUser) {
+      throw new BadRequestException(
+        new ErrorResponseDto(
+          ExceptionCode.USER_NOT_FOUND,
+          `Target user with ID ${targetUserId} not found`,
+        ),
+      );
+    }
+
+    // Check if a match already exists between these users
+    let match = await this.prisma.match.findFirst({
+      where: {
+        OR: [
+          {
+            requester_id: currentUserId,
+            requested_id: targetUserId,
+          },
+          {
+            requester_id: targetUserId,
+            requested_id: currentUserId,
+          },
+        ],
+      },
+    });
+
+    // If no match exists, create one
+    if (!match) {
+      match = await this.prisma.match.create({
+        data: {
+          requester_id: currentUserId,
+          requested_id: targetUserId,
+          status: MatchStatus.ACCEPTED, // Automatically accept the match for testing
+          requester_consent: true,
+          requested_consent: true,
+        },
+      });
+    } else if (match.status !== MatchStatus.ACCEPTED) {
+      // If match exists but is not accepted, update it to accepted
+      match = await this.prisma.match.update({
+        where: { id: match.id },
+        data: {
+          status: MatchStatus.ACCEPTED,
+          requester_consent: true,
+          requested_consent: true,
+        },
+      });
+    }
+
+    // Check if a conversation already exists for this match and type
+    let conversation = await this.prisma.conversation.findFirst({
+      where: {
+        match_id: match.id,
+        type: conversationType,
+      },
+    });
+
+    // If no conversation exists, create one
+    if (!conversation) {
+      conversation = await this.prisma.conversation.create({
+        data: {
+          match_id: match.id,
+          type: conversationType,
+        },
+      });
+    }
+
+    return new BasicResponseDto('Test conversation created successfully', {
+      matchId: match.id,
+      conversationId: conversation.id,
+      type: conversation.type,
+    });
   }
 }
