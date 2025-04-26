@@ -1,7 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
-import { ExceptionCode } from 'src/enums/custom.exception.code';
 import { RedisService } from 'src/infra/redis/redis.service';
 
 @Injectable()
@@ -14,7 +13,7 @@ export class AuthGuard implements CanActivate {
 
     if (!sessionId) {
       throw new UnauthorizedException(
-        new ErrorResponseDto(ExceptionCode.SESSION_NOT_FOUND, 'Session not found'),
+        new ErrorResponseDto('Session not found'),
       );
     }
 
@@ -23,7 +22,7 @@ export class AuthGuard implements CanActivate {
 
     if (!sessionData) {
       throw new UnauthorizedException(
-        new ErrorResponseDto(ExceptionCode.SESSION_NOT_FOUND, 'Invalid session'),
+        new ErrorResponseDto('Invalid session'),
       );
     }
 

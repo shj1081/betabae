@@ -1,7 +1,6 @@
 import { HttpException, HttpStatus, Injectable, OnModuleInit } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
-import { ExceptionCode } from 'src/enums/custom.exception.code';
 
 @Injectable()
 export class RedisService implements OnModuleInit {
@@ -41,7 +40,6 @@ export class RedisService implements OnModuleInit {
     if (this.redis.status !== 'ready') {
       throw new HttpException(
         new ErrorResponseDto(
-          ExceptionCode.REDIS_CONNECTION_ERROR,
           'Redis is not ready. Current status: ' + this.redis.status,
         ),
         HttpStatus.SERVICE_UNAVAILABLE,
@@ -55,7 +53,6 @@ export class RedisService implements OnModuleInit {
     if (message.includes('ECONNREFUSED')) {
       throw new HttpException(
         new ErrorResponseDto(
-          ExceptionCode.REDIS_CONNECTION_ERROR,
           `Redis connection refused during ${operation} for key ${key}`,
         ),
         HttpStatus.SERVICE_UNAVAILABLE,
@@ -64,14 +61,13 @@ export class RedisService implements OnModuleInit {
 
     if (message.includes('NOAUTH')) {
       throw new HttpException(
-        new ErrorResponseDto(ExceptionCode.REDIS_AUTH_ERROR, 'Redis authentication failed'),
+        new ErrorResponseDto('Redis authentication failed'),
         HttpStatus.UNAUTHORIZED,
       );
     }
 
     throw new HttpException(
       new ErrorResponseDto(
-        ExceptionCode.REDIS_OPERATION_ERROR,
         `Redis ${operation} failed for key ${key}: ${message}`,
       ),
       HttpStatus.INTERNAL_SERVER_ERROR,

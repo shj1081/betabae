@@ -65,4 +65,9 @@ export class UserProfileResponseDto {
   @Expose()
   @Type(() => ProfileDto)
   profile: ProfileDto;
+
+  constructor(user: UserDto, profile: ProfileDto) {
+    this.user = user;
+    this.profile = profile;
+  }
 }

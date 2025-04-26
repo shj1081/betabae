@@ -48,3 +48,12 @@ export class MessageResponseDto {
   @Type(() => MessageAttachmentDto)
   attachment?: MessageAttachmentDto;
 }
+
+export class MessageListResponseDto {
+  @Type(() => MessageResponseDto)
+  messages: MessageResponseDto[];
+
+  constructor(messages: MessageResponseDto[]) {
+    this.messages = messages;
+  }
+}

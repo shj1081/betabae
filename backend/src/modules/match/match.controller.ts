@@ -1,16 +1,19 @@
 import {
-    Body,
-    Controller,
-    Get,
-    Param,
-    ParseIntPipe,
-    Post,
-    Req,
-    UseGuards,
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { BasicResponseDto } from 'src/dto/common/basic.response.dto';
-import { CreateMatchRequestDto } from 'src/dto/match/create-match.request.dto';
+import { CreateMatchRequestDto } from 'src/dto/match/match.request.dto';
+import {
+  MatchListResponseDto,
+  MatchResponseDto,
+} from 'src/dto/match/match.response.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { MatchService } from './match.service';
 
@@ -26,14 +29,11 @@ export class MatchController {
    */
   @UseGuards(AuthGuard)
   @Post()
-  async createMatch(
-    @Req() req: Request,
-    @Body() dto: CreateMatchRequestDto,
-  ) {
+  async createMatch(@Req() req: Request, @Body() dto: CreateMatchRequestDto) {
     const userId = Number(req['user'].id);
     const match = await this.matchService.createMatch(userId, dto.requestedId);
 
-    return new BasicResponseDto('Match request sent successfully', match);
+    return new MatchResponseDto(match);
   }
 
   /**
@@ -51,7 +51,7 @@ export class MatchController {
     const userId = Number(req['user'].id);
     const match = await this.matchService.acceptMatch(userId, matchId);
 
-    return new BasicResponseDto('Match accepted successfully', match);
+    return new MatchResponseDto(match);
   }
 
   /**
@@ -69,7 +69,7 @@ export class MatchController {
     const userId = Number(req['user'].id);
     const match = await this.matchService.rejectMatch(userId, matchId);
 
-    return new BasicResponseDto('Match rejected successfully', match);
+    return new MatchResponseDto(match);
   }
 
   /**
@@ -83,10 +83,7 @@ export class MatchController {
     const userId = Number(req['user'].id);
     const matches = await this.matchService.getReceivedMatches(userId);
 
-    return new BasicResponseDto(
-      'Received match requests retrieved successfully',
-      matches,
-    );
+    return new MatchListResponseDto(matches);
   }
 
   /**
@@ -100,6 +97,6 @@ export class MatchController {
     const userId = Number(req['user'].id);
     const matches = await this.matchService.getAllMatches(userId);
 
-    return new BasicResponseDto('All matches retrieved successfully', matches);
+    return new MatchListResponseDto(matches);
   }
 }

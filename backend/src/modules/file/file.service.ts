@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
-import { ExceptionCode } from 'src/enums/custom.exception.code';
+
 import { UploadFileResponseDto } from '../../dto/file/upload-file.response.dto';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { S3Service } from '../../infra/s3/s3.service';
@@ -19,9 +19,7 @@ export class FileService {
     });
 
     if (!media) {
-      throw new BadRequestException(
-        new ErrorResponseDto(ExceptionCode.FILE_NOT_FOUND, 'File not found'),
-      );
+      throw new BadRequestException(new ErrorResponseDto('File not found'));
     }
 
     return media.file_url;
@@ -32,24 +30,16 @@ export class FileService {
     context: string,
   ): Promise<UploadFileResponseDto> {
     if (!file) {
-      throw new BadRequestException(
-        new ErrorResponseDto(ExceptionCode.FILE_NO_CONTENT, 'File is required'),
-      );
+      throw new BadRequestException(new ErrorResponseDto('File is required'));
     }
     if (!context) {
       throw new BadRequestException(
-        new ErrorResponseDto(
-          ExceptionCode.FILE_NO_CONTEXT,
-          'Context is required',
-        ),
+        new ErrorResponseDto('Context is required'),
       );
     }
 
     // S3 -> DB 순서로 진행하여 무결성 보장
-    const { Location: fileUrl } = await this.s3Service.uploadFile(
-      file,
-      context,
-    );
+    const fileUrl = await this.s3Service.uploadFile(file, context);
 
     const media = await this.prisma.media.create({
       data: {
@@ -72,9 +62,7 @@ export class FileService {
     });
 
     if (!media) {
-      throw new BadRequestException(
-        new ErrorResponseDto(ExceptionCode.FILE_NOT_FOUND, 'File not found'),
-      );
+      throw new BadRequestException(new ErrorResponseDto('File not found'));
     }
 
     // DB -> S3 순서로 진행하여 무결성 보장

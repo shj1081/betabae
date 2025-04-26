@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ErrorResponseDto } from '../dto/common/error.response.dto';
-import { ExceptionCode } from '../enums/custom.exception.code';
 
 @Catch(BadRequestException)
 export class ValidationFilter implements ExceptionFilter {
@@ -19,8 +18,8 @@ export class ValidationFilter implements ExceptionFilter {
     // 사용자 정의 ErrorResponseDto를 포함한 BadRequestException인 경우 그대로 반환
     if (
       typeof exceptionResponse === 'object' &&
-      'code' in exceptionResponse &&
-      'message' in exceptionResponse
+      'message' in exceptionResponse &&
+      !('code' in exceptionResponse) // code 필드가 없는 ErrorResponseDto인 경우에만 그대로 반환
     ) {
       return response.status(HttpStatus.BAD_REQUEST).json(exceptionResponse);
     }
@@ -45,7 +44,7 @@ export class ValidationFilter implements ExceptionFilter {
 
     response
       .status(HttpStatus.BAD_REQUEST)
-      .json(new ErrorResponseDto(ExceptionCode.VALIDATION_ERROR, errorMessage));
+      .json(new ErrorResponseDto(errorMessage));
   }
 
   private formatNestValidationErrors(

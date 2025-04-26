@@ -17,11 +17,14 @@ import { Request } from 'express';
 import { SendMessageDto } from 'src/dto/chat/message.request.dto';
 import { BasicResponseDto } from 'src/dto/common/basic.response.dto';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
-import { ExceptionCode } from 'src/enums/custom.exception.code';
-import { AuthGuard } from '../auth/auth.guard';
-import { ChatService } from './chat.service';
-import { ChatAnalysisService } from './chat-analysis.service';
+
 import { ChatAnalysisRequestDto } from 'src/dto/chat/chat-analysis.request.dto';
+import { ChatAnalysisResponseDto } from 'src/dto/chat/chat-analysis.response.dto';
+import { ConversationListResponseDto } from 'src/dto/chat/conversation.response.dto';
+import { MessageListResponseDto } from 'src/dto/chat/message.response.dto';
+import { AuthGuard } from '../auth/auth.guard';
+import { ChatAnalysisService } from './chat-analysis.service';
+import { ChatService } from './chat.service';
 
 @Controller('chat/conversations')
 @UseGuards(AuthGuard)
@@ -39,30 +42,11 @@ export class ChatController {
   @Get()
   async getConversations(@Req() req: Request) {
     const userId = Number(req['user'].id);
-    const conversations = await this.chatService.getConversations(userId);
-    return new BasicResponseDto(
-      'Conversations retrieved successfully',
-      conversations,
+    const result = await this.chatService.getConversations(userId);
+    return new ConversationListResponseDto(
+      result.conversations,
+      result.totalUnreadCount,
     );
-  }
-
-  /**
-   * Get a conversation by ID. This endpoint is called when the user navigates to a specific conversation.
-   * @param req The request object.
-   * @param conversationId The ID of the conversation to retrieve.
-   * @returns A BasicResponseDto containing the conversation.
-   */
-  @Get(':conversationId')
-  async getConversation(
-    @Req() req: Request,
-    @Param('conversationId', ParseIntPipe) conversationId: number,
-  ) {
-    const userId = Number(req['user'].id);
-    const conversation = await this.chatService.getConversationEntity(
-      conversationId,
-      userId,
-    );
-    return new BasicResponseDto('Conversation retrieved', conversation);
   }
 
   /**
@@ -88,19 +72,16 @@ export class ChatController {
       before ? Number(before) : undefined,
     );
 
-    return new BasicResponseDto('Messages retrieved successfully', messages);
+    return new MessageListResponseDto(messages);
   }
 
   /**
    * Send a text message to a specific conversation. This endpoint is called when the user sends a text message.
-   * 
-   * REAL_BAE: DB에 저장 후 소켓 broadcast (게이트웨이에서 emit)
-   * BETA_BAE: LLM 호출/응답을 포함 (service 내에서 분기)
-   * 
+   *
    * @param req The request object.
    * @param conversationId The ID of the conversation to send the message to.
    * @param dto The SendMessageDto containing the message text.
-   * @returns A BasicResponseDto containing the message.
+   * @returns A BasicResponseDto with a success message.
    */
   @Post(':conversationId/messages/text')
   async sendTextMessage(
@@ -109,20 +90,18 @@ export class ChatController {
     @Body() dto: SendMessageDto,
   ) {
     const userId = Number(req['user'].id);
-    const message = await this.chatService.sendTextMessage(
+    await this.chatService.sendTextMessage(
       userId,
       conversationId,
       dto.messageText,
     );
 
-    return new BasicResponseDto('Message processed successfully', message);
+    return new BasicResponseDto('Message processed successfully');
   }
-
-
 
   /**
    * Send an image message to a specific conversation. This endpoint is called when the user sends an image message.
-   * 
+   *
    * @param req The request object containing user information.
    * @param conversationId The ID of the conversation to send the message to.
    * @param messageText Optional text accompanying the image.
@@ -142,21 +121,18 @@ export class ChatController {
 
     if (!file) {
       throw new BadRequestException(
-        new ErrorResponseDto(
-          ExceptionCode.FILE_NO_CONTENT,
-          'File not found in the request',
-        ),
+        new ErrorResponseDto('File not found in the request'),
       );
     }
 
-    const message = await this.chatService.sendImageMessage(
+    await this.chatService.sendImageMessage(
       userId,
       conversationId,
       file,
       messageText,
     );
 
-    return new BasicResponseDto('Image message sent successfully', message);
+    return new BasicResponseDto('Image message sent successfully');
   }
 
   /**
@@ -166,12 +142,9 @@ export class ChatController {
    * @returns A BasicResponseDto containing the analysis result.
    */
   @Post('analysis')
-  async analyzeChat(
-    @Req() req: Request,
-    @Body() dto: ChatAnalysisRequestDto,
-  ) {
+  async analyzeChat(@Req() req: Request, @Body() dto: ChatAnalysisRequestDto) {
     const userId = Number(req['user'].id);
     const result = await this.chatAnalysisService.analyzeChat(dto, userId);
-    return new BasicResponseDto('Chat analysis completed', result);
+    return new ChatAnalysisResponseDto(result.analysis, result.llmRawResponse);
   }
 }

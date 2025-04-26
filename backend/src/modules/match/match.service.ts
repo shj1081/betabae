@@ -1,13 +1,12 @@
 import {
-    BadRequestException,
-    Injectable,
-    NotFoundException,
+  BadRequestException,
+  Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { MatchStatus } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
 import { MatchResponseDto } from 'src/dto/match/match.response.dto';
-import { ExceptionCode } from 'src/enums/custom.exception.code';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 
 @Injectable()
@@ -25,10 +24,7 @@ export class MatchService {
 
     if (!requester) {
       throw new NotFoundException(
-        new ErrorResponseDto(
-          ExceptionCode.USER_NOT_FOUND,
-          `Requester with ID ${requesterId} not found`,
-        ),
+        new ErrorResponseDto(`Requester with ID ${requesterId} not found`),
       );
     }
 
@@ -38,10 +34,7 @@ export class MatchService {
 
     if (!requested) {
       throw new NotFoundException(
-        new ErrorResponseDto(
-          ExceptionCode.USER_NOT_FOUND,
-          `Requested user with ID ${requestedId} not found`,
-        ),
+        new ErrorResponseDto(`Requested user with ID ${requestedId} not found`),
       );
     }
 
@@ -63,10 +56,7 @@ export class MatchService {
 
     if (existingMatch) {
       throw new BadRequestException(
-        new ErrorResponseDto(
-          ExceptionCode.MATCH_ALREADY_EXISTS,
-          'A match already exists between these users',
-        ),
+        new ErrorResponseDto('A match already exists between these users'),
       );
     }
 
@@ -84,14 +74,12 @@ export class MatchService {
           select: {
             id: true,
             legal_name: true,
-            
           },
         },
         requested: {
           select: {
             id: true,
             legal_name: true,
-            
           },
         },
       },
@@ -100,26 +88,23 @@ export class MatchService {
     return this.mapMatchToDto(match);
   }
 
-  async acceptMatch(userId: number, matchId: number): Promise<MatchResponseDto> {
+  async acceptMatch(
+    userId: number,
+    matchId: number,
+  ): Promise<MatchResponseDto> {
     const match = await this.getMatchById(matchId);
 
     // Ensure the user is the requested user in the match
     if (match.requested_id !== userId) {
       throw new BadRequestException(
-        new ErrorResponseDto(
-          ExceptionCode.UNAUTHORIZED_MATCH_ACTION,
-          'Only the requested user can accept this match',
-        ),
+        new ErrorResponseDto('Only the requested user can accept this match'),
       );
     }
 
     // Ensure match is in PENDING status
     if (match.status !== MatchStatus.PENDING) {
       throw new BadRequestException(
-        new ErrorResponseDto(
-          ExceptionCode.INVALID_MATCH_STATUS,
-          `Match is already ${match.status.toLowerCase()}`,
-        ),
+        new ErrorResponseDto(`Match is already ${match.status.toLowerCase()}`),
       );
     }
 
@@ -135,14 +120,12 @@ export class MatchService {
           select: {
             id: true,
             legal_name: true,
-            
           },
         },
         requested: {
           select: {
             id: true,
             legal_name: true,
-            
           },
         },
       },
@@ -159,26 +142,23 @@ export class MatchService {
     return this.mapMatchToDto(updatedMatch);
   }
 
-  async rejectMatch(userId: number, matchId: number): Promise<MatchResponseDto> {
+  async rejectMatch(
+    userId: number,
+    matchId: number,
+  ): Promise<MatchResponseDto> {
     const match = await this.getMatchById(matchId);
 
     // Ensure the user is the requested user in the match
     if (match.requested_id !== userId) {
       throw new BadRequestException(
-        new ErrorResponseDto(
-          ExceptionCode.UNAUTHORIZED_MATCH_ACTION,
-          'Only the requested user can reject this match',
-        ),
+        new ErrorResponseDto('Only the requested user can reject this match'),
       );
     }
 
     // Ensure match is in PENDING status
     if (match.status !== MatchStatus.PENDING) {
       throw new BadRequestException(
-        new ErrorResponseDto(
-          ExceptionCode.INVALID_MATCH_STATUS,
-          `Match is already ${match.status.toLowerCase()}`,
-        ),
+        new ErrorResponseDto(`Match is already ${match.status.toLowerCase()}`),
       );
     }
 
@@ -218,14 +198,12 @@ export class MatchService {
           select: {
             id: true,
             legal_name: true,
-            
           },
         },
         requested: {
           select: {
             id: true,
             legal_name: true,
-            
           },
         },
       },
@@ -240,24 +218,19 @@ export class MatchService {
   async getAllMatches(userId: number): Promise<MatchResponseDto[]> {
     const matches = await this.prisma.match.findMany({
       where: {
-        OR: [
-          { requester_id: userId },
-          { requested_id: userId },
-        ],
+        OR: [{ requester_id: userId }, { requested_id: userId }],
       },
       include: {
         requester: {
           select: {
             id: true,
             legal_name: true,
-            
           },
         },
         requested: {
           select: {
             id: true,
             legal_name: true,
-            
           },
         },
       },
@@ -276,10 +249,7 @@ export class MatchService {
 
     if (!match) {
       throw new NotFoundException(
-        new ErrorResponseDto(
-          ExceptionCode.MATCH_NOT_FOUND,
-          `Match with ID ${matchId} not found`,
-        ),
+        new ErrorResponseDto(`Match with ID ${matchId} not found`),
       );
     }
 

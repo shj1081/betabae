@@ -1,7 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import OpenAI from 'openai';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
-import { ExceptionCode } from 'src/enums/custom.exception.code';
 
 @Injectable()
 export class LlmService {
@@ -11,7 +10,7 @@ export class LlmService {
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
       throw new InternalServerErrorException(
-        new ErrorResponseDto(ExceptionCode.OPENAI_ERROR, 'OpenAI API key is not set in environment variables'));
+        new ErrorResponseDto('OpenAI API key is not set in environment variables'));
     }
     const openai = new OpenAI({ apiKey });
     const response = await openai.chat.completions.create({

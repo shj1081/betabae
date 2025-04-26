@@ -1,7 +1,6 @@
 import { DeleteObjectCommand, PutObjectCommand, S3 } from '@aws-sdk/client-s3';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
-import { ExceptionCode } from 'src/enums/custom.exception.code';
 
 @Injectable()
 export class S3Service {
@@ -43,7 +42,6 @@ export class S3Service {
     if (!result) {
       throw new InternalServerErrorException(
         new ErrorResponseDto(
-          ExceptionCode.S3_INTERNAL_ERROR,
           'File upload failed',
         ),
       );
@@ -51,15 +49,9 @@ export class S3Service {
 
     // local minio and aws s3 url format is different
     if (this.isLocal) {
-      return {
-        ...result, // TODO: give result for debugging, remove before production
-        Location: `${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET_NAME}/${key}`,
-      };
+      return `${process.env.S3_ENDPOINT}/${process.env.S3_BUCKET_NAME}/${key}`;
     }
-    return {
-      ...result, // TODO: give result for debugging, remove before production
-      Location: `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${key}`,
-    };
+    return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${key}`;
   }
 
   // delete file from s3
@@ -81,12 +73,9 @@ export class S3Service {
     if (!result) {
       throw new InternalServerErrorException(
         new ErrorResponseDto(
-          ExceptionCode.S3_INTERNAL_ERROR,
           'File delete failed',
         ),
       );
     }
-
-    return result;
   }
 }

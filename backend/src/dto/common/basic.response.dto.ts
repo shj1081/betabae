@@ -1,13 +1,10 @@
 import { IsString } from 'class-validator';
 
-export class BasicResponseDto<T = any> {
+export class BasicResponseDto {
   @IsString()
   message: string;
 
-  data?: T;
-
-  constructor(message: string, data?: T) {
+  constructor(message: string) {
     this.message = message;
-    this.data = data;
   }
 }

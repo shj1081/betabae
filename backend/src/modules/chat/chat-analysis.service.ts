@@ -4,7 +4,7 @@ import { LlmService } from '../llm/llm.service';
 import { ChatAnalysisRequestDto } from 'src/dto/chat/chat-analysis.request.dto';
 import { ChatAnalysisResponseDto } from 'src/dto/chat/chat-analysis.response.dto';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
-import { ExceptionCode } from 'src/enums/custom.exception.code';
+
 
 @Injectable()
 export class ChatAnalysisService {
@@ -20,18 +20,12 @@ export class ChatAnalysisService {
       include: { conversation: true },
     });
 
-    if (!message) throw new BadRequestException(new ErrorResponseDto(
-      ExceptionCode.CHAT_ANALYSIS_MESSAGE_NOT_FOUND,
-      'Message not found',
-    ));
+    if (!message) throw new BadRequestException(new ErrorResponseDto('Message not found'));
 
     // not allow the message of file attachment
     if (message.attachment_media_id) {
       throw new BadRequestException(
-        new ErrorResponseDto(
-          ExceptionCode.CHAT_ANALYSIS_FILE_NOT_SUPPORTED,
-          'File/attachment messages are not supported for chat analysis.',
-        ),
+        new ErrorResponseDto('File/attachment messages are not supported for chat analysis.'),
       );
     }
     const conversationId = message.conversation_id;
