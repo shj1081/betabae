@@ -8,9 +8,13 @@ import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 
 @Module({
-  imports: [FileModule, forwardRef(() => AuthModule), LlmModule],
+  imports: [
+    FileModule, 
+    forwardRef(() => AuthModule), 
+    forwardRef(() => LlmModule)
+  ],
   providers: [ChatService, ChatGateway, ChatAnalysisService],
   controllers: [ChatController],
-  exports: [ChatService, ChatAnalysisService],
+  exports: [ChatService, ChatAnalysisService, ChatGateway],
 })
 export class ChatModule {}

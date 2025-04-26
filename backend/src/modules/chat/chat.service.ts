@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -22,6 +24,7 @@ export class ChatService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly fileService: FileService,
+    @Inject(forwardRef(() => LlmService))
     private readonly llmService: LlmService,
   ) {}
 
@@ -163,65 +166,50 @@ export class ChatService {
       },
     });
 
-    // 읽음처리
-    await this.markMessagesAsRead(userId, conversationId);
-
     return messages.map((m) => this.mapMessageToDto(m));
   }
 
+  /**
+   * Send a text message in a conversation
+   * Handles both user messages and beta_bae messages
+   */
   async sendTextMessage(
     senderId: number,
     conversationId: number,
     messageText: string,
   ) {
-    // conversation 정보
-    const conversation = await this.getConversationEntity(
-      conversationId,
-      senderId,
-    );
+    // 대화방 접근 권한 확인
+    await this.verifyConversationAccess(senderId, conversationId);
 
-    if (conversation.type === ConversationType.REAL_BAE) {
-      // REAL_BAE 로직
-      await this.prisma.message.create({
-        data: {
-          conversation_id: conversationId,
-          sender_id: senderId,
-          message_text: messageText,
-          is_read: false,
-        },
-        include: {
-          sender: { select: { id: true } },
-        },
-      });
+    // Get conversation to check type
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+    });
 
-      await this.updateConversationActivity(conversationId);
-      await this.incrementUnreadCount(senderId, conversationId);
-    } else if (conversation.type === ConversationType.BETA_BAE) {
-      const botReply = await this.llmService.getAnswerFromBot(messageText);
-
-      // 유저 답변과 llm 답변을 DB 저장 (임시)
-      await this.prisma.message.create({
-        data: {
-          conversation_id: conversationId,
-          sender_id: senderId,
-          message_text: `[USER] ${messageText}`,
-          is_read: true,
+    // 메시지 저장
+    const message = await this.prisma.message.create({
+      data: {
+        conversation_id: conversationId,
+        sender_id: senderId,
+        message_text: messageText,
+        sent_at: new Date(),
+        is_read: false,
+      },
+      include: {
+        sender: {
+          select: { id: true },
         },
-      });
-      await this.prisma.message.create({
-        data: {
-          conversation_id: conversationId,
-          sender_id: 0, // bot user id = 0 or something
-          message_text: `[BOT] ${botReply}`,
-          is_read: true,
-        },
-      });
-    }
+      },
+    });
 
-    // TODO: error dto 처리
-    throw new BadRequestException(
-      new ErrorResponseDto('Unsupported conversation type'),
-    );
+    // 대화방 활동 시간 업데이트
+    await this.updateConversationActivity(conversationId);
+
+    // 상대방의 unread count 증가
+    await this.incrementUnreadCount(senderId, conversationId);
+
+    // DTO 변환 후 반환
+    return this.mapMessageToDto(message);
   }
 
   async sendImageMessage(
@@ -262,12 +250,14 @@ export class ChatService {
     await this.incrementUnreadCount(senderId, conversationId);
   }
 
+  /**
+   * Mark all unread messages in a conversation as read for a specific user
+   * This is called when a user enters a chat room screen
+   */
   async markMessagesAsRead(
     userId: number,
     conversationId: number,
   ): Promise<void> {
-    await this.verifyConversationAccess(userId, conversationId);
-
     // 내 메시지가 아닌 것만 is_read=true
     await this.prisma.message.updateMany({
       where: {
@@ -364,6 +354,10 @@ export class ChatService {
     });
   }
 
+  /**
+   * Increment the unread count for a recipient in a conversation
+   * This is called when a new message is sent and the recipient is not in the chat room screen
+   */
   private async incrementUnreadCount(senderId: number, conversationId: number) {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
