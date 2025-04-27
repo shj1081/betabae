@@ -50,7 +50,7 @@ Join our community of developers creating universal apps.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 
 ## Directory Structure
-'''
+```
 ui/
 ├── app/          # pages
 ├── components/   # reusable components
@@ -58,4 +58,4 @@ ui/
 ├── constants/    # color, font
 ├── assets/       # image, font..
 └── ...
-'''
+```
