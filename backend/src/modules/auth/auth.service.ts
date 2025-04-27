@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/
 import * as bcrypt from 'bcrypt';
 import { RegisterRequestDto } from 'src/dto/auth/register.request.dto';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
-import { ExceptionCode } from 'src/enums/custom.exception.code';
+
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -21,10 +21,7 @@ export class AuthService {
     });
     if (user)
       throw new BadRequestException(
-        new ErrorResponseDto(
-          ExceptionCode.USER_ALREADY_EXISTS,
-          `Email ${dto.email} already exists`,
-        ),
+        new ErrorResponseDto(`Email ${dto.email} already exists`),
       );
 
     // hash password
@@ -49,13 +46,13 @@ export class AuthService {
     });
     if (!user) {
       throw new UnauthorizedException(
-        new ErrorResponseDto(ExceptionCode.USER_NOT_FOUND, 'User not found'),
+        new ErrorResponseDto('User not found'),
       );
     }
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
       throw new UnauthorizedException(
-        new ErrorResponseDto(ExceptionCode.INVALID_CREDENTIALS, 'Invalid password'),
+        new ErrorResponseDto('Invalid password'),
       );
     }
     // Generate session
@@ -71,10 +68,7 @@ export class AuthService {
     const session = await this.redis.get(sessionKey);
     if (!session) {
       throw new BadRequestException(
-        new ErrorResponseDto(
-          ExceptionCode.SESSION_NOT_FOUND,
-          'Already logged out or invalid session',
-        ),
+        new ErrorResponseDto('Session not found, invalid session'),
       );
     }
 

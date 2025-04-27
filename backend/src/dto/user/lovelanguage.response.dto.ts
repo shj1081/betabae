@@ -30,4 +30,8 @@ export class UserLoveLanguageResponseDto {
   @Expose()
   @Transform(({ value }) => value?.toISOString())
   updated_at: Date;
+
+  constructor(partial: Partial<UserLoveLanguageResponseDto>) {
+    Object.assign(this, partial);
+  }
 }

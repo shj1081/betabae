@@ -1,12 +1,23 @@
-import { Body, Controller, Get, Put, Post, Req, UseGuards } from '@nestjs/common';
-import { PersonalitySurveyScoreRequestDto } from 'src/dto/user/personality-survey-score.request.dto';
-import { LoveLanguageSurveyScoreRequestDto } from 'src/dto/user/lovelanguage-survey-score.request.dto';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { BasicResponseDto } from 'src/dto/common/basic.response.dto';
 import { UpdateCredentialDto } from 'src/dto/user/credential.request.dto';
-import { UserPersonalityDto } from 'src/dto/user/personality.request.dto';
-import { UserProfileDto } from 'src/dto/user/profile.request.dto';
+import { LoveLanguageSurveyScoreRequestDto } from 'src/dto/user/lovelanguage-survey-score.request.dto';
 import { UserLoveLanguageDto } from 'src/dto/user/lovelanguage.request.dto';
+import { UserLoveLanguageResponseDto } from 'src/dto/user/lovelanguage.response.dto';
+import { PersonalitySurveyScoreRequestDto } from 'src/dto/user/personality-survey-score.request.dto';
+import { UserPersonalityDto } from 'src/dto/user/personality.request.dto';
+import { UserPersonalityResponseDto } from 'src/dto/user/personality.response.dto';
+import { UserProfileDto } from 'src/dto/user/profile.request.dto';
+import { UserProfileResponseDto } from 'src/dto/user/profile.response.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { UserService } from './user.service';
 
@@ -27,10 +38,7 @@ export class UserController {
     const userId = Number(req['user'].id);
     const userData = await this.userService.getUserProfile(userId);
 
-    return new BasicResponseDto(
-      'User profile retrieved successfully',
-      userData,
-    );
+    return new UserProfileResponseDto(userData.user, userData.profile);
   }
 
   /**
@@ -54,10 +62,7 @@ export class UserController {
       dto,
     );
 
-    return new BasicResponseDto(
-      'User profile updated successfully',
-      updatedUser,
-    );
+    return new UserProfileResponseDto(updatedUser.user, updatedUser.profile);
   }
 
   /**
@@ -71,12 +76,9 @@ export class UserController {
   @Get('personality')
   async getUserPersonality(@Req() req: Request) {
     const userId = Number(req['user'].id);
-    const personalityData = await this.userService.getUserPersonality(userId);
+    const personality = await this.userService.getUserPersonality(userId);
 
-    return new BasicResponseDto(
-      'User personality retrieved successfully',
-      personalityData,
-    );
+    return new UserPersonalityResponseDto(personality);
   }
 
   /**
@@ -98,10 +100,7 @@ export class UserController {
     const updatedPersonality =
       await this.userService.updateOrCreateUserPersonality(userId, dto);
 
-    return new BasicResponseDto(
-      'User personality updated successfully',
-      updatedPersonality,
-    );
+    return new UserPersonalityResponseDto(updatedPersonality);
   }
 
   /**
@@ -109,7 +108,7 @@ export class UserController {
    *
    * @param req - The request object containing user information.
    * @param dto - The credential update data transfer object.
-   * @returns A response indicating the password was updated successfully.
+   * @returns BasicResponseDto indicating success.
    * @throws UnauthorizedException if the current password is incorrect.
    * @throws NotFoundException if the user is not found.
    */
@@ -120,9 +119,9 @@ export class UserController {
     @Body() dto: UpdateCredentialDto,
   ) {
     const userId = Number(req['user'].id);
-    const result = await this.userService.updateUserCredential(userId, dto);
+    await this.userService.updateUserCredential(userId, dto);
 
-    return new BasicResponseDto('Password updated successfully', result);
+    return new BasicResponseDto('User credential updated successfully');
   }
 
   /**
@@ -136,12 +135,9 @@ export class UserController {
   @Get('lovelanguage')
   async getUserLoveLanguage(@Req() req: Request) {
     const userId = Number(req['user'].id);
-    const loveLanguageData = await this.userService.getUserLoveLanguage(userId);
+    const loveLanguage = await this.userService.getUserLoveLanguage(userId);
 
-    return new BasicResponseDto(
-      'User love language retrieved successfully',
-      loveLanguageData,
-    );
+    return new UserLoveLanguageResponseDto(loveLanguage);
   }
 
   /**
@@ -163,10 +159,7 @@ export class UserController {
     const updatedLoveLanguage =
       await this.userService.updateOrCreateUserLoveLanguage(userId, dto);
 
-    return new BasicResponseDto(
-      'User love language updated successfully',
-      updatedLoveLanguage,
-    );
+    return new UserLoveLanguageResponseDto(updatedLoveLanguage);
   }
 
   /**
@@ -180,13 +173,12 @@ export class UserController {
   @UseGuards(AuthGuard)
   @Post('personality/score')
   async scorePersonalitySurvey(
+    @Req() req: Request,
     @Body() dto: PersonalitySurveyScoreRequestDto,
   ) {
-    const result = await this.userService.scorePersonalitySurvey(dto);
-    return new BasicResponseDto(
-      'Personality survey scored and user data updated',
-      result,
-    );
+    const userId = Number(req['user'].id);
+    const result = await this.userService.scorePersonalitySurvey(userId, dto);
+    return new UserPersonalityResponseDto(result);
   }
 
   /**
@@ -200,14 +192,11 @@ export class UserController {
   @UseGuards(AuthGuard)
   @Post('lovelanguage/score')
   async scoreLoveLanguageSurvey(
+    @Req() req: Request,
     @Body() dto: LoveLanguageSurveyScoreRequestDto,
   ) {
-    const result = await this.userService.scoreLoveLanguageSurvey(dto);
-    return new BasicResponseDto(
-      'Love language survey scored and user data updated',
-      result,
-    );
+    const userId = Number(req['user'].id);
+    const result = await this.userService.scoreLoveLanguageSurvey(userId, dto);
+    return new UserLoveLanguageResponseDto(result);
   }
 }
-
-

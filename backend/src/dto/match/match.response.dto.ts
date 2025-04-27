@@ -6,7 +6,7 @@ export class MatchUserInfoDto {
   id: number;
 
   @Expose()
-  name: string;
+  legal_name: string;
 
   @Expose()
   email: string;
@@ -28,11 +28,11 @@ export class MatchResponseDto {
   status: MatchStatus;
 
   @Expose()
-  requesterConsent: boolean;
+  requester_consent: boolean;
 
   @Expose()
-  requestedConsent: boolean;
-  
+  requested_consent: boolean;
+
   @Expose()
   @Transform(({ value }) => value?.toISOString())
   created_at: Date;
@@ -40,4 +40,21 @@ export class MatchResponseDto {
   @Expose()
   @Transform(({ value }) => value?.toISOString())
   updated_at: Date;
+
+  constructor(partial: Partial<MatchResponseDto>) {
+    Object.assign(this, partial);
+  }
+}
+
+export class MatchListResponseDto {
+  @Type(() => MatchResponseDto)
+  matches: MatchResponseDto[];
+
+  @Expose()
+  totalCount: number;
+
+  constructor(matches: MatchResponseDto[]) {
+    this.matches = matches;
+    this.totalCount = matches.length;
+  }
 }

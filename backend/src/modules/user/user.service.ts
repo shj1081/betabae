@@ -8,18 +8,17 @@ import * as bcrypt from 'bcrypt';
 import { plainToInstance } from 'class-transformer';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
 import { UpdateCredentialDto } from 'src/dto/user/credential.request.dto';
+import { UserLoveLanguageDto } from 'src/dto/user/lovelanguage.request.dto';
+import { UserLoveLanguageResponseDto } from 'src/dto/user/lovelanguage.response.dto';
 import { UserPersonalityDto } from 'src/dto/user/personality.request.dto';
 import { UserPersonalityResponseDto } from 'src/dto/user/personality.response.dto';
 import { UserProfileDto } from 'src/dto/user/profile.request.dto';
 import { UserProfileResponseDto } from 'src/dto/user/profile.response.dto';
-import { UserLoveLanguageDto } from 'src/dto/user/lovelanguage.request.dto';
-import { UserLoveLanguageResponseDto } from 'src/dto/user/lovelanguage.response.dto';
-import { ExceptionCode } from 'src/enums/custom.exception.code';
+
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 
 @Injectable()
 export class UserService {
-
   constructor(private prisma: PrismaService) {}
 
   async getAllUsersExcept(currentUserId: number) {
@@ -71,10 +70,7 @@ export class UserService {
 
     if (!user) {
       throw new BadRequestException(
-        new ErrorResponseDto(
-          ExceptionCode.USER_NOT_FOUND,
-          `User with ID ${userId} not found`,
-        ),
+        new ErrorResponseDto(`User with ID ${userId} not found`),
       );
     }
 
@@ -113,14 +109,9 @@ export class UserService {
 
     if (!user) {
       throw new NotFoundException(
-        new ErrorResponseDto(
-          ExceptionCode.USER_NOT_FOUND,
-          `User with ID ${userId} not found`,
-        ),
+        new ErrorResponseDto(`User with ID ${userId} not found`),
       );
     }
-
-
 
     // Check if profile exists
     const existingProfile = await this.prisma.userProfile.findUnique({
@@ -163,10 +154,7 @@ export class UserService {
         dto.city === undefined
       ) {
         throw new BadRequestException(
-          new ErrorResponseDto(
-            ExceptionCode.NOT_ENOUGH_PROFILE_INFO,
-            '프로필 생성을 위해 age, gender, province, city 정보가 모두 필요합니다.',
-          ),
+          new ErrorResponseDto('Not enough profile information provided'),
         );
       }
 
@@ -203,10 +191,7 @@ export class UserService {
 
     if (!personality) {
       throw new NotFoundException(
-        new ErrorResponseDto(
-          ExceptionCode.USER_PERSONALITY_NOT_FOUND,
-          `Personality data for user with ID ${userId} not found`,
-        ),
+        new ErrorResponseDto(`User personality with ID ${userId} not found`),
       );
     }
 
@@ -224,10 +209,7 @@ export class UserService {
 
     if (!user) {
       throw new NotFoundException(
-        new ErrorResponseDto(
-          ExceptionCode.USER_NOT_FOUND,
-          `User with ID ${userId} not found`,
-        ),
+        new ErrorResponseDto(`User with ID ${userId} not found`),
       );
     }
 
@@ -272,21 +254,18 @@ export class UserService {
     });
     if (!user) {
       throw new NotFoundException(
-        new ErrorResponseDto(
-          ExceptionCode.USER_NOT_FOUND,
-          `User with ID ${userId} not found`,
-        ),
+        new ErrorResponseDto(`User with ID ${userId} not found`),
       );
     }
 
     // 2. Compare passwords
-    const passwordMatch = await bcrypt.compare(dto.currentPassword, user.password_hash);
+    const passwordMatch = await bcrypt.compare(
+      dto.currentPassword,
+      user.password_hash,
+    );
     if (!passwordMatch) {
       throw new UnauthorizedException(
-        new ErrorResponseDto(
-          ExceptionCode.INVALID_CREDENTIALS,
-          'Current password is incorrect',
-        ),
+        new ErrorResponseDto('Current password is incorrect'),
       );
     }
 
@@ -296,8 +275,6 @@ export class UserService {
       where: { id: userId },
       data: { password_hash: newHash },
     });
-
-    return { success: true, message: 'Password updated successfully.' };
   }
 
   async getUserLoveLanguage(userId: number) {
@@ -308,7 +285,6 @@ export class UserService {
     if (!loveLanguage) {
       throw new NotFoundException(
         new ErrorResponseDto(
-          ExceptionCode.USER_PERSONALITY_NOT_FOUND, // Consider making a new ExceptionCode for love language
           `Love language data for user with ID ${userId} not found`,
         ),
       );
@@ -319,17 +295,17 @@ export class UserService {
     });
   }
 
-  async updateOrCreateUserLoveLanguage(userId: number, dto: UserLoveLanguageDto) {
+  async updateOrCreateUserLoveLanguage(
+    userId: number,
+    dto: UserLoveLanguageDto,
+  ) {
     // Check if user exists
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
     if (!user) {
       throw new NotFoundException(
-        new ErrorResponseDto(
-          ExceptionCode.USER_NOT_FOUND,
-          `User with ID ${userId} not found`,
-        ),
+        new ErrorResponseDto(`User with ID ${userId} not found`),
       );
     }
 
@@ -368,30 +344,36 @@ export class UserService {
   }
 
   // Calculate personality from survey answers (mock logic)
-  async scorePersonalitySurvey(dto: { answers: number[] }) {
+  async scorePersonalitySurvey(userId: number, dto: { answers: number[] }) {
     const [a1, a2, a3, a4, a5] = dto.answers;
     const personality = {
+      id: 0, // mocked ID
+      user_id: userId,
       openness: a1,
       conscientiousness: a2,
       extraversion: a3,
       agreeableness: a4,
       neuroticism: a5,
+      created_at: new Date(), // mock
+      updated_at: new Date(), // mock
     };
-    return { personality };
+    return personality;
   }
 
   // Calculate love language from survey answers (mock logic)
-  async scoreLoveLanguageSurvey(dto: { answers: number[] }) {
+  async scoreLoveLanguageSurvey(userID: number, dto: { answers: number[] }) {
     const [a1, a2, a3, a4, a5] = dto.answers;
     const loveLanguage = {
+      id: 0, // mocked ID
+      user_id: userID,
       words_of_affirmation: a1,
       acts_of_service: a2,
       receiving_gifts: a3,
       quality_time: a4,
       physical_touch: a5,
+      created_at: new Date(), // mock
+      updated_at: new Date(), // mock
     };
-    return { loveLanguage };
+    return loveLanguage;
   }
 }
-
-

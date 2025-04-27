@@ -1,5 +1,6 @@
 import { ConversationType } from '@prisma/client';
 import { Expose, Transform, Type } from 'class-transformer';
+import { IsArray, IsNumber } from 'class-validator';
 import { MessageResponseDto } from './message.response.dto';
 
 export class ChatPartnerDto {
@@ -7,7 +8,7 @@ export class ChatPartnerDto {
   id: number;
 
   @Expose()
-  name: string;
+  nickname: string;
 
   @Expose()
   profileImageUrl?: string;
@@ -44,10 +45,18 @@ export class ConversationResponseDto {
 }
 
 export class ConversationListResponseDto {
-  @Expose()
+  @IsArray()
   @Type(() => ConversationResponseDto)
   conversations: ConversationResponseDto[];
 
-  @Expose()
+  @IsNumber()
   totalUnreadCount: number;
+
+  constructor(
+    conversations: ConversationResponseDto[],
+    totalUnreadCount: number,
+  ) {
+    this.conversations = conversations;
+    this.totalUnreadCount = totalUnreadCount;
+  }
 }

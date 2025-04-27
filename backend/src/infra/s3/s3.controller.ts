@@ -2,7 +2,6 @@ import { Controller, Delete, Post, Query, UploadedFile, UseInterceptors } from '
 import { FileInterceptor } from '@nestjs/platform-express';
 import { BasicResponseDto } from 'src/dto/common/basic.response.dto';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
-import { ExceptionCode } from 'src/enums/custom.exception.code';
 import { S3Service } from './s3.service';
 
 // TODO: test controller for s3 (should be deleted before production)
@@ -14,11 +13,10 @@ export class S3Controller {
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
     try {
-      const result = await this.s3Service.uploadFile(file, 'test'); // save on test directory
-      return new BasicResponseDto('success', result);
+      const location = await this.s3Service.uploadFile(file, 'test'); // save on test directory
+      return new BasicResponseDto(location);
     } catch (error) {
       return new ErrorResponseDto(
-        ExceptionCode.S3_INTERNAL_ERROR,
         error instanceof Error ? error.message : String(error),
       );
     }
@@ -28,10 +26,9 @@ export class S3Controller {
   async deleteFile(@Query('url') url: string) {
     try {
       await this.s3Service.deleteFile(url);
-      return new BasicResponseDto('success', 'File deleted successfully');
+      return new BasicResponseDto('File deleted successfully');
     } catch (error) {
       return new ErrorResponseDto(
-        ExceptionCode.S3_INTERNAL_ERROR,
         error instanceof Error ? error.message : String(error),
       );
     }

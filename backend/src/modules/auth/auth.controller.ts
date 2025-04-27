@@ -1,10 +1,10 @@
 import { BadRequestException, Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { LoginResponseDto } from 'src/dto/auth/login-response.dto';
 import { LoginRequestDto } from 'src/dto/auth/login.request.dto';
 import { RegisterRequestDto } from 'src/dto/auth/register.request.dto';
 import { BasicResponseDto } from 'src/dto/common/basic.response.dto';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
-import { ExceptionCode } from 'src/enums/custom.exception.code';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
@@ -18,7 +18,7 @@ export class AuthController {
    * 
    * @param dto - Data transfer object containing email and password for registration
    * @param res - Response object to set cookies
-   * @returns A response indicating successful registration with user email and
+   * @returns A response indicating successful registration with user email
    */
   @Post('register')
   async register(@Body() dto: RegisterRequestDto, @Res({ passthrough: true }) res: Response) {
@@ -32,9 +32,8 @@ export class AuthController {
       path: '/',
     });
 
-    return new BasicResponseDto('Register successful and logged in', {
-      email: dto.email,
-    });
+    // use login response dto bcs auto login after register
+    return new LoginResponseDto(dto.email);
   }
 
   /**
@@ -60,10 +59,7 @@ export class AuthController {
     const currentSessionId = req.cookies.session_id as string | undefined;
     if (currentSessionId) {
       throw new BadRequestException(
-        new ErrorResponseDto(
-          ExceptionCode.ALREADY_LOGGED_IN,
-          `User session ${currentSessionId} already exists`,
-        ),
+        new ErrorResponseDto(`User session ${currentSessionId} already exists`),
       );
     }
 
@@ -76,9 +72,7 @@ export class AuthController {
       path: '/',
     });
 
-    return new BasicResponseDto('Login successful', {
-      email: dto.email,
-    });
+    return new LoginResponseDto(dto.email);
   }
 
   /**
@@ -94,7 +88,7 @@ export class AuthController {
     const sessionId = req.cookies.session_id as string | undefined;
     if (!sessionId) {
       throw new BadRequestException(
-        new ErrorResponseDto(ExceptionCode.SESSION_NOT_FOUND, 'Session not found'),
+        new ErrorResponseDto('Session not found'),
       );
     }
 

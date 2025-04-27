@@ -1,15 +1,10 @@
-import { IsEnum, IsString } from 'class-validator';
-import { ExceptionCode } from 'src/enums/custom.exception.code';
+import { IsString } from 'class-validator';
 
 export class ErrorResponseDto {
-  @IsEnum(ExceptionCode)
-  code: ExceptionCode;
-
   @IsString()
   message: string;
 
-  constructor(code: ExceptionCode, message: string) {
-    this.code = code;
+  constructor(message: string) {
     this.message = message;
   }
 }
