@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   ClassSerializerInterceptor,
   Controller,
@@ -24,6 +25,7 @@ import {
   MessageListResponseDto,
   MessageResponseDto,
 } from 'src/dto/chat/message.response.dto';
+import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
@@ -89,7 +91,7 @@ export class ChatController {
     @Body() dto: SendImageMessageDto,
   ): Promise<{ ok: boolean; message: MessageResponseDto }> {
     if (!file) {
-      throw new Error('File is required');
+      throw new BadRequestException(new ErrorResponseDto('File is required'));
     }
 
     const message = await this.chatService.createImage(

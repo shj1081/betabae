@@ -14,6 +14,7 @@ import {
   MessageResponseDto,
   MessageSenderDto,
 } from 'src/dto/chat/message.response.dto';
+import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { FileService } from 'src/modules/file/file.service';
@@ -278,7 +279,7 @@ export class ChatService {
       where: { id: conversationId },
       include: { match: true },
     });
-    if (!conv) throw new NotFoundException('Conversation not found');
+    if (!conv) throw new NotFoundException(new ErrorResponseDto('Conversation not found'));
 
     return {
       requesterUserId: conv.match.requester_id,
@@ -331,11 +332,11 @@ export class ChatService {
       where: { id: conversationId },
       include: { match: true },
     });
-    if (!conv) throw new NotFoundException('Conversation not found');
+    if (!conv) throw new NotFoundException(new ErrorResponseDto('Conversation not found'));
 
     const { requester_id, requested_id } = conv.match;
     if (userId !== 0 && userId !== requester_id && userId !== requested_id)
-      throw new BadRequestException('No access to this conversation');
+      throw new BadRequestException(new ErrorResponseDto('No access to this conversation'));
 
     // Return match object for further processing
     return {
