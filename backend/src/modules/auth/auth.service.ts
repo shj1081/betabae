@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { RegisterRequestDto } from 'src/dto/auth/register.request.dto';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
@@ -36,8 +40,14 @@ export class AuthService {
       },
     });
 
-    // No login step since there is no password or email
-    return { sessionId: uuidv4() };
+    // auto login after register
+    // Generate session
+    const sessionId = uuidv4();
+    await this.redis.set(
+      `session:${sessionId}`,
+      JSON.stringify({ email: dto.email }),
+    );
+    return { sessionId };
   }
 
   async login(email: string, password: string): Promise<{ sessionId: string }> {
@@ -45,19 +55,18 @@ export class AuthService {
       where: { email },
     });
     if (!user) {
-      throw new UnauthorizedException(
-        new ErrorResponseDto('User not found'),
-      );
+      throw new UnauthorizedException(new ErrorResponseDto('User not found'));
     }
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
-      throw new UnauthorizedException(
-        new ErrorResponseDto('Invalid password'),
-      );
+      throw new UnauthorizedException(new ErrorResponseDto('Invalid password'));
     }
     // Generate session
     const sessionId = uuidv4();
-    await this.redis.set(`session:${sessionId}`, JSON.stringify({ id: user.id, email: user.email }));
+    await this.redis.set(
+      `session:${sessionId}`,
+      JSON.stringify({ id: user.id, email: user.email }),
+    );
     return { sessionId };
   }
 
