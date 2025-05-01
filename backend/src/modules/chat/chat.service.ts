@@ -45,7 +45,7 @@ export class ChatService {
           where: {
             OR: [
               { user_specific_id: { not: userId } },
-              { user_specific_id: null }
+              { user_specific_id: null },
             ],
           },
           orderBy: { updated_at: 'desc' },
@@ -215,7 +215,9 @@ export class ChatService {
     });
 
     if (conv && conv.type === ConversationType.BETA_BAE)
-      throw new BadRequestException('Image not allowed for BETA_BAE');
+      throw new BadRequestException(
+        new ErrorResponseDto('Image not allowed for BETA_BAE'),
+      );
 
     const media = await this.fileSrv.uploadFile(file, 'chat-image');
     const textMessage = await this.createText(
@@ -279,7 +281,10 @@ export class ChatService {
       where: { id: conversationId },
       include: { match: true },
     });
-    if (!conv) throw new NotFoundException(new ErrorResponseDto('Conversation not found'));
+    if (!conv)
+      throw new NotFoundException(
+        new ErrorResponseDto('Conversation not found'),
+      );
 
     return {
       requesterUserId: conv.match.requester_id,
@@ -332,11 +337,16 @@ export class ChatService {
       where: { id: conversationId },
       include: { match: true },
     });
-    if (!conv) throw new NotFoundException(new ErrorResponseDto('Conversation not found'));
+    if (!conv)
+      throw new NotFoundException(
+        new ErrorResponseDto('Conversation not found'),
+      );
 
     const { requester_id, requested_id } = conv.match;
     if (userId !== 0 && userId !== requester_id && userId !== requested_id)
-      throw new BadRequestException(new ErrorResponseDto('No access to this conversation'));
+      throw new BadRequestException(
+        new ErrorResponseDto('No access to this conversation'),
+      );
 
     // Return match object for further processing
     return {

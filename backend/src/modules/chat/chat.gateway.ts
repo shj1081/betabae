@@ -42,8 +42,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private prisma: PrismaService,
   ) {}
 
-  
-
   // connection handling
 
   /**
@@ -103,11 +101,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('leave')
   async leaveRoom(@ConnectedSocket() c: U, @MessageBody() dto: LeaveRoomDto) {
     if (c.userId === undefined) return;
-    
+
     // 화면에서 나갈 때 읽음 처리를 다시 한번 수행
     await this.chatSrv.markRead(c.userId, dto.cid);
     c.active?.delete(dto.cid);
-    
+
     // 읽음 처리 후 채팅 목록 업데이트
     c.emit('chatListUpdate', await this.chatSrv.getConversations(c.userId));
   }
