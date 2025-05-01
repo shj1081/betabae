@@ -1,422 +1,167 @@
+import { Logger } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
 import { parse } from 'cookie';
 import { Server, Socket } from 'socket.io';
+import {
+  EnterRoomDto,
+  LeaveRoomDto,
+  SendTextDto,
+} from 'src/dto/chat/chat-gateway.dto';
 import { MessageResponseDto } from 'src/dto/chat/message.response.dto';
+import { PrismaService } from 'src/infra/prisma/prisma.service';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { LlmService } from '../llm/llm.service';
 import { ChatService } from './chat.service';
 
-/// Socket.io에서 사용하는 Socket 인터페이스 확장
-interface AuthenticatedSocket extends Socket {
+interface U extends Socket {
   userId?: number;
-  activeRooms?: Set<number>; // Track which conversation rooms the user is actively viewing
+  active?: Set<number>;
 }
 
 @WebSocketGateway({
-  cors: {
-    origin: '*',
-    credentials: true,
-  },
   namespace: 'chat',
+  cors: { origin: 'http://localhost:3001', credentials: true },
 })
-export class ChatGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
-{
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 
+  private readonly logger = new Logger(ChatGateway.name);
+
   constructor(
-    private readonly chatService: ChatService,
-    private readonly redisService: RedisService,
-    private readonly llmService: LlmService,
+    private chatSrv: ChatService,
+    private redis: RedisService,
+    private llm: LlmService,
+    private prisma: PrismaService,
   ) {}
 
-  afterInit(server: Server) {
-    console.log('WebSocket Gateway initialized');
-  }
+  
 
-  async handleConnection(client: AuthenticatedSocket) {
-    try {
-      // 클라이언트에서 전달한 session_id 조회
-      const sessionId = parse(client.request.headers.cookie || '').session_id;
-
-      if (!sessionId) {
-        console.log('No session_id in cookies; disconnecting');
-        client.disconnect();
-        return;
-      }
-
-      // Redis에서 세션 조회
-      const sessionKey = `session:${sessionId}`;
-      const sessionData = await this.redisService.get(sessionKey);
-      if (!sessionData) {
-        console.log('Session not found in Redis; disconnecting');
-        client.disconnect();
-        return;
-      }
-
-      // 유저 정보 파싱
-      const userData = JSON.parse(sessionData) as { id: string; email: string };
-      client.userId = Number(userData.id);
-      client.activeRooms = new Set(); // Initialize empty set of active rooms
-
-      // 유저 전용 socket room join
-      client.join(`user:${userData.id}`);
-      console.log(`Client connected: ${client.id}, user: ${userData.id}`);
-
-      // Send initial chat list update when user connects
-      // This ensures real-time updates start immediately upon login
-      await this.sendChatListUpdate(client);
-    } catch (error) {
-      console.error('Error during connection:', error);
-      client.disconnect();
-    }
-  }
-
-  handleDisconnect(client: AuthenticatedSocket) {
-    console.log(`Client disconnected: ${client.id}`);
-    // Clear active rooms when client disconnects
-    client.activeRooms = new Set();
-  }
+  // connection handling
 
   /**
-   * Handle when a user enters a chat room screen
-   * This is different from joining a conversation (membership)
+   * Handle client connection
+   * @param client Client socket
    */
-  @SubscribeMessage('enterChatRoomScreen')
-  async enterChatRoomScreen(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { conversationId: number },
-  ) {
-    if (!client.userId) {
-      return { success: false, message: 'Unauthorized' };
-    }
+  async handleConnection(client: U) {
+    const sid = parse(client.request.headers.cookie || '').session_id;
+    if (!sid) return client.disconnect();
 
-    try {
-      const { conversationId } = data;
-      const conversation =
-        await this.chatService.getConversationEntity(conversationId);
+    const session = await this.redis.get(`session:${sid}`);
+    if (!session) return client.disconnect();
 
-      // Add to socket room for this conversation
-      client.join(`conversation:${conversationId}`);
+    client.userId = JSON.parse(session).id;
+    client.active = new Set();
+    client.join(`user:${client.userId}`);
 
-      // Track that this client is actively viewing this room
-      if (!client.activeRooms) {
-        client.activeRooms = new Set();
-      }
-      client.activeRooms.add(conversationId);
-
-      // Mark all messages as read when entering the chat room screen
-      await this.chatService.markMessagesAsRead(client.userId, conversationId);
-
-      return {
-        success: true,
-        message: `Entered chat room screen for conversation ${conversationId} and marked messages as read`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message || 'Failed to enter chat room screen',
-      };
+    // send initial chat list
+    if (client.userId !== undefined) {
+      const list = await this.chatSrv.getConversations(client.userId);
+      client.emit('chatListUpdate', list);
     }
   }
 
   /**
-   * Handle when a user leaves a chat room screen (navigates away)
-   * This is different from exiting a conversation (membership removal)
+   * Handle client disconnection
+   * @param client Client socket
    */
-  @SubscribeMessage('leaveChatRoomScreen')
-  leaveChatRoomScreen(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { conversationId: number },
-  ) {
-    const { conversationId } = data;
+  handleDisconnect(client: U) {
+    client.active?.clear();
+  }
 
-    // Remove from active rooms tracking
-    if (client.activeRooms) {
-      client.activeRooms.delete(conversationId);
-    }
+  // event handling
 
-    // Note: We don't leave the socket room here to keep receiving updates
-    // for unread count purposes
+  /**
+   * Handle client entering a room
+   * @param client Client socket
+   * @param dto Enter room data
+   */
+  @SubscribeMessage('enter')
+  async enterRoom(@ConnectedSocket() c: U, @MessageBody() dto: EnterRoomDto) {
+    if (c.userId === undefined) return;
 
-    return { success: true, message: 'Left chat room screen' };
+    await this.chatSrv.markRead(c.userId, dto.cid);
+    c.join(`conv:${dto.cid}`);
+    c.active?.add(dto.cid);
+
+    // send updated chat list
+    c.emit('chatListUpdate', await this.chatSrv.getConversations(c.userId));
   }
 
   /**
-   * Handle when a user exits a conversation (membership removal)
+   * Handle client leaving a room
+   * @param client Client socket
+   * @param dto Leave room data
    */
-  @SubscribeMessage('exitConversation')
-  async exitConversation(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { conversationId: number },
-  ) {
-    if (!client.userId) {
-      return { success: false, message: 'Unauthorized' };
-    }
-
-    const { conversationId } = data;
-
-    try {
-      // Remove from active rooms tracking
-      if (client.activeRooms) {
-        client.activeRooms.delete(conversationId);
-      }
-
-      // Leave the socket room
-      client.leave(`conversation:${conversationId}`);
-
-      // Here you would add logic to remove the user from the conversation membership
-      // This would typically be handled by the ChatService
-
-      return { success: true, message: 'Exited conversation successfully' };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message || 'Failed to exit conversation',
-      };
-    }
+  @SubscribeMessage('leave')
+  async leaveRoom(@ConnectedSocket() c: U, @MessageBody() dto: LeaveRoomDto) {
+    if (c.userId === undefined) return;
+    
+    // 화면에서 나갈 때 읽음 처리를 다시 한번 수행
+    await this.chatSrv.markRead(c.userId, dto.cid);
+    c.active?.delete(dto.cid);
+    
+    // 읽음 처리 후 채팅 목록 업데이트
+    c.emit('chatListUpdate', await this.chatSrv.getConversations(c.userId));
   }
 
-  @SubscribeMessage('sendMessage')
-  async sendTextMessage(
-    @ConnectedSocket() client: AuthenticatedSocket,
-    @MessageBody() data: { conversationId: number; messageText: string },
-  ) {
-    if (!client.userId) {
-      return { success: false, message: 'Unauthorized' };
-    }
+  /**
+   * Handle client sending a text message
+   * @param client Client socket
+   * @param dto Text message data
+   */
+  @SubscribeMessage('text')
+  async sendText(@ConnectedSocket() c: U, @MessageBody() dto: SendTextDto) {
+    if (c.userId === undefined) return;
 
+    const msg = await this.chatSrv.createText(c.userId, dto.cid, dto.text);
+    await this.broadcast(dto.cid, msg);
+
+    // Check if this is a BETA_BAE conversation and generate a response
     try {
-      const { conversationId, messageText } = data;
-      // conversation 조회
-      const conversation =
-        await this.chatService.getConversationEntity(conversationId);
+      // Get conversation details to check type
+      const conv = await this.prisma.conversation.findUnique({
+        where: { id: dto.cid },
+        select: { type: true },
+      });
 
-      // 실시간 메시지 전송
-      const message = await this.chatService.sendTextMessage(
-        client.userId,
-        conversationId,
-        messageText,
+      // Check if this is a BETA_BAE conversation type
+      if (conv && conv.type === 'BETA_BAE') {
+        const bot = await this.llm.getBotResponse(dto.text);
+        const botMsg = await this.chatSrv.createText(0, dto.cid, bot);
+        await this.broadcast(dto.cid, botMsg);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error handling BETA_BAE response: ${error.message}`,
+        error.stack,
       );
-
-      await this.broadcastNewMessage(conversationId, message, client.userId);
-
-      // Update chat list for all users in the conversation
-      await this.updateChatListForConversation(conversationId);
-
-      return { success: true, message };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message || 'Failed to send message',
-      };
     }
   }
 
   /**
-   * Process and broadcast a new message to all clients in a conversation
-   * This method is called by controllers to handle message sending
+   * Broadcast message to all clients in a conversation
+   * @param cid Conversation ID
+   * @param msg Message to broadcast
    */
-  async processAndBroadcastMessage(
-    userId: number,
-    conversationId: number,
-    messageText: string,
-  ) {
-    try {
-      // Save the message to the database using the chat service
-      const message = await this.chatService.sendTextMessage(
-        userId,
-        conversationId,
-        messageText,
-      );
+  public async broadcast(cid: number, msg: MessageResponseDto) {
+    this.server.to(`conv:${cid}`).emit('newMessage', msg);
 
-      // Broadcast the message to all clients
-      await this.broadcastNewMessage(conversationId, message, userId);
-
-      // Update chat list for all users in the conversation
-      await this.updateChatListForConversation(conversationId);
-
-      return { success: true, message };
-    } catch (error) {
-      console.error('Failed to process and broadcast message:', error);
-      return {
-        success: false,
-        message: error.message || 'Failed to send message',
-      };
-    }
-  }
-
-  /**
-   * Process a beta_bae message through the LLM service and broadcast it
-   * This method is called by controllers to handle beta_bae messages
-   */
-  async processBetaBaeMessage(
-    userId: number,
-    conversationId: number,
-    userMessageText: string,
-  ) {
-    try {
-      // First send the user message
-      await this.processAndBroadcastMessage(
-        userId,
-        conversationId,
-        userMessageText,
-      );
-
-      // Get response from LLM
-      const botResponse = await this.llmService.getBotResponse(userMessageText);
-
-      // Then send the bot response
-      const botUserId = 0; // Use 0 or a designated bot user ID
-      const message = await this.chatService.sendTextMessage(
-        botUserId,
-        conversationId,
-        botResponse,
-      );
-
-      // Broadcast the bot message
-      await this.broadcastNewMessage(conversationId, message, botUserId);
-
-      // Update chat list for all users
-      await this.updateChatListForConversation(conversationId);
-
-      return { success: true, message };
-    } catch (error) {
-      console.error('Failed to process beta_bae message:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Broadcast a new message to all clients in a conversation
-   * @private Internal method used by public gateway methods
-   */
-  private async broadcastNewMessage(
-    conversationId: number,
-    message: MessageResponseDto,
-    senderId: number,
-  ) {
-    // Broadcast to all clients in the conversation room
-    this.server
-      .to(`conversation:${conversationId}`)
-      .emit('newMessage', message);
-
-    // Get conversation users
-    const conversationData =
-      await this.chatService.getConversationWithUsers(conversationId);
-
-    if (!conversationData) return;
-
-    // Find other users in the conversation
-    const otherUserId =
-      senderId === conversationData.requesterUserId
-        ? conversationData.requestedUserId
-        : conversationData.requesterUserId;
-
-    // Get all connected sockets for this user
-    const userSockets = await this.server
-      .in(`user:${otherUserId}`)
-      .fetchSockets();
-    const authenticatedSockets =
-      userSockets as unknown as AuthenticatedSocket[];
-
-    // For each connected socket of the recipient
-    for (const socket of authenticatedSockets) {
-      // If the user is not actively viewing this conversation
-      if (!socket.activeRooms || !socket.activeRooms.has(conversationId)) {
-        // Send notification with unread count
-        socket.emit('messageNotification', {
-          conversationId,
-          message,
-        });
-      }
-    }
-  }
-
-  /**
-   * Mark messages as read in a conversation
-   * This method is called by controllers when a user views messages
-   */
-  async markMessagesAsRead(userId: number, conversationId: number) {
-    try {
-      // Mark messages as read in the database
-      await this.chatService.markMessagesAsRead(userId, conversationId);
-
-      // Update chat list for the user to reflect read status
-      const userSockets = await this.server.in(`user:${userId}`).fetchSockets();
-      const authenticatedSockets =
-        userSockets as unknown as AuthenticatedSocket[];
-
-      for (const socket of authenticatedSockets) {
-        await this.sendChatListUpdate(socket);
-      }
-
-      return { success: true };
-    } catch (error) {
-      console.error('Failed to mark messages as read:', error);
-      return {
-        success: false,
-        message: error.message || 'Failed to mark messages as read',
-      };
-    }
-  }
-
-  /**
-   * Send chat list update to a specific client
-   * @private Internal method used by public gateway methods
-   */
-  private async sendChatListUpdate(client: AuthenticatedSocket) {
-    if (!client.userId) return;
-
-    try {
-      const conversations = await this.chatService.getConversations(
-        client.userId,
-      );
-      client.emit('chatListUpdate', conversations);
-    } catch (error) {
-      console.error('Failed to send chat list update:', error);
-    }
-  }
-
-  /**
-   * Update chat list for all users in a conversation
-   * @private Internal method used by public gateway methods
-   */
-  private async updateChatListForConversation(conversationId: number) {
-    try {
-      const conversationData =
-        await this.chatService.getConversationWithUsers(conversationId);
-
-      if (!conversationData) return;
-
-      // Update chat list for both users
-      const userIds = [
-        conversationData.requesterUserId,
-        conversationData.requestedUserId,
-      ];
-
-      for (const userId of userIds) {
-        const userSockets = await this.server
-          .in(`user:${userId}`)
-          .fetchSockets();
-        const authenticatedSockets =
-          userSockets as unknown as AuthenticatedSocket[];
-
-        for (const socket of authenticatedSockets) {
-          await this.sendChatListUpdate(socket);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to update chat list for conversation:', error);
-    }
+    // update chat list
+    const { requesterUserId, requestedUserId } =
+      await this.chatSrv.getConversationWithUsers(cid);
+    await Promise.all(
+      [requesterUserId, requestedUserId].map(async (uid) => {
+        const list = await this.chatSrv.getConversations(uid);
+        this.server.to(`user:${uid}`).emit('chatListUpdate', list);
+      }),
+    );
   }
 }

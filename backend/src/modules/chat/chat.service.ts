@@ -1,406 +1,346 @@
 import {
   BadRequestException,
-  forwardRef,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ConversationType, MatchStatus } from '@prisma/client';
+import { ConversationType } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import {
-  ConversationListResponseDto,
+  ChatPartnerDto,
   ConversationResponseDto,
 } from 'src/dto/chat/conversation.response.dto';
-import { MessageResponseDto } from 'src/dto/chat/message.response.dto';
-import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
+import {
+  MessageAttachmentDto,
+  MessageResponseDto,
+  MessageSenderDto,
+} from 'src/dto/chat/message.response.dto';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 import { RedisService } from 'src/infra/redis/redis.service';
 import { FileService } from 'src/modules/file/file.service';
-import { LlmService } from '../llm/llm.service';
 
 @Injectable()
 export class ChatService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly redis: RedisService,
-    private readonly fileService: FileService,
-    @Inject(forwardRef(() => LlmService))
-    private readonly llmService: LlmService,
+    private prisma: PrismaService,
+    private redis: RedisService,
+    private fileSrv: FileService,
   ) {}
 
-  //
-  // Core Business Logic (Public Methods)
-  //
-
-  async getConversations(userId: number): Promise<ConversationListResponseDto> {
-    // Get conversations for the user
+  /**
+   * Get conversations for a user
+   * @param userId User ID
+   * @returns List of conversations and total unread count
+   */
+  async getConversations(userId: number) {
     const matches = await this.prisma.match.findMany({
       where: {
         OR: [{ requester_id: userId }, { requested_id: userId }],
-        status: MatchStatus.ACCEPTED,
-        conversations: {
-          some: {
-            // type: ConversationType.REAL_BAE,
-          },
-        },
+        status: 'ACCEPTED',
       },
       include: {
-        requester: {
-          select: {
-            id: true,
-            profile: {
-              select: {
-                nickname: true,
-                profile_image: {
-                  select: { file_url: true },
-                },
-              },
-            },
-          },
-        },
-        requested: {
-          select: {
-            id: true,
-            profile: {
-              select: {
-                nickname: true,
-                profile_image: {
-                  select: { file_url: true },
-                },
-              },
-            },
-          },
-        },
         conversations: {
+          // user_specific_id가 userId 인 경우 상대방이 생성한 beta_bae 채팅방이므로 제외
+          // user_specific_id가 userId가 아닌 경우나 null인 경우만 가져오기
           where: {
-            // type: ConversationType.REAL_BAE,
+            OR: [
+              { user_specific_id: { not: userId } },
+              { user_specific_id: null }
+            ],
           },
+          orderBy: { updated_at: 'desc' },
           include: {
-            messages: {
-              orderBy: { sent_at: 'desc' },
-              take: 1,
-              include: {
-                sender: {
-                  select: { id: true },
-                },
-                media: true,
-              },
-            },
+            messages: { orderBy: { sent_at: 'desc' }, take: 1 },
           },
         },
+        requester: { select: { id: true, profile: true } },
+        requested: { select: { id: true, profile: true } },
       },
     });
 
-    let totalUnreadCount = 0;
-    const conversationsData = await Promise.all(
-      matches.map(async (match) => {
-        const isRequester = match.requester_id === userId;
-        const chatPartner = isRequester ? match.requested : match.requester;
-
-        const chatPartnerNickname = chatPartner.profile?.nickname ?? '';
-        const chatPartnerProfileImageUrl =
-          chatPartner.profile?.profile_image?.file_url;
-
-        const conversation = match.conversations[0];
-        if (!conversation) return null;
-
-        // redis unread count
-        const unreadCountKey = `unread:${userId}:${conversation.id}`;
-        const unreadCountStr = await this.redis.get(unreadCountKey);
-        const unreadCount = unreadCountStr ? parseInt(unreadCountStr, 10) : 0;
-        totalUnreadCount += unreadCount;
-
-        const lastMessage =
-          conversation.messages.length > 0
-            ? this.mapMessageToDto(conversation.messages[0])
-            : undefined;
-
-        return {
-          conversationId: conversation.id,
-          matchId: match.id,
-          type: conversation.type,
-          chatPartner: {
-            id: chatPartner.id,
-            name: chatPartnerNickname, // for DTO compatibility
-            nickname: chatPartnerNickname,
-            profileImageUrl: chatPartnerProfileImageUrl,
-          },
-          unreadCount,
-          lastMessage,
-          createdAt: conversation.created_at,
-          updatedAt: conversation.updated_at,
-        };
-      }),
+    // Redis 파이프라인으로 unread 일괄 조회
+    const pipeline = this.redis.multi();
+    matches.forEach((m) =>
+      m.conversations.forEach((c) => pipeline.get(`unread:${userId}:${c.id}`)),
     );
+    const unreadCounts = (await pipeline.exec()) || [];
 
-    const filteredConversations = conversationsData.filter(
-      Boolean,
+    // DTO 매핑
+    let idx = 0;
+    const conversations = matches
+      .flatMap((match) => match.conversations)
+      .map((conv) => {
+        const match = matches.find((m) =>
+          m.conversations.some((c) => c.id === conv.id),
+        );
+        if (!match) return null;
+
+        const profile =
+          match.requester_id === userId
+            ? match.requested.profile
+            : match.requester.profile;
+        if (!profile) return null;
+
+        const chatPartner = plainToInstance(ChatPartnerDto, {
+          id: profile.user_id,
+          nickname: profile.nickname,
+          profileImageUrl: profile.profile_media_id,
+        });
+
+        // Map last message to DTO if it exists
+        let lastMessage: MessageResponseDto | undefined = undefined;
+        if (conv.messages[0]) {
+          const msg = conv.messages[0];
+          lastMessage = this.mapMessageToDto(msg);
+        }
+
+        return plainToInstance(ConversationResponseDto, {
+          conversationId: conv.id,
+          matchId: conv.match_id,
+          type: conv.type,
+          chatPartner,
+          unreadCount: parseInt(
+            unreadCounts[idx] && unreadCounts[idx][1]
+              ? String(unreadCounts[idx++][1])
+              : '0',
+            10,
+          ),
+          lastMessage,
+          createdAt: new Date(conv.created_at),
+          updatedAt: new Date(conv.updated_at),
+        });
+      });
+
+    // Filter out null values and calculate total unread count
+    const filteredConversations = conversations.filter(
+      (c) => c !== null,
     ) as ConversationResponseDto[];
-
-    return {
-      conversations: filteredConversations,
-      totalUnreadCount,
-    };
-  }
-
-  async getMessages(
-    userId: number,
-    conversationId: number,
-    limit: number = 20,
-    before?: number,
-  ): Promise<MessageResponseDto[]> {
-    await this.verifyConversationAccess(userId, conversationId);
-
-    const whereCondition: any = { conversation_id: conversationId };
-    if (before) {
-      whereCondition.id = { lt: before };
-    }
-
-    const messages = await this.prisma.message.findMany({
-      where: whereCondition,
-      orderBy: { sent_at: 'desc' },
-      take: limit,
-      include: {
-        sender: { select: { id: true } },
-        media: true,
-      },
-    });
-
-    return messages.map((m) => this.mapMessageToDto(m));
+    const totalUnreadCount = filteredConversations.reduce(
+      (sum, c) => sum + c.unreadCount,
+      0,
+    );
+    return { conversations: filteredConversations, totalUnreadCount };
   }
 
   /**
-   * Send a text message in a conversation
-   * Handles both user messages and beta_bae messages
+   * Get messages for a conversation
+   * @param userId User ID
+   * @param conversationId Conversation ID
+   * @param limit Number of messages to fetch
+   * @param before Message ID to fetch before
+   * @returns List of messages
    */
-  async sendTextMessage(
-    senderId: number,
+  async getMessages(
+    userId: number,
     conversationId: number,
-    messageText: string,
+    limit = 30,
+    before?: number,
   ) {
-    // 대화방 접근 권한 확인
-    await this.verifyConversationAccess(senderId, conversationId);
+    await this.assertAccess(userId, conversationId);
 
-    // Get conversation to check type
-    const conversation = await this.prisma.conversation.findUnique({
-      where: { id: conversationId },
-    });
-
-    // 메시지 저장
-    const message = await this.prisma.message.create({
-      data: {
+    const messages = await this.prisma.message.findMany({
+      where: {
         conversation_id: conversationId,
-        sender_id: senderId,
-        message_text: messageText,
-        sent_at: new Date(),
-        is_read: false,
+        ...(before && { id: { lt: before } }),
       },
-      include: {
-        sender: {
-          select: { id: true },
-        },
-      },
+      orderBy: { sent_at: 'desc' },
+      take: limit,
+      include: { sender: { select: { id: true, profile: true } }, media: true },
     });
 
-    // 대화방 활동 시간 업데이트
-    await this.updateConversationActivity(conversationId);
+    // Map database entities to DTOs
+    return messages.map((msg) => this.mapMessageToDto(msg));
+  }
 
-    // 상대방의 unread count 증가
-    await this.incrementUnreadCount(senderId, conversationId);
+  /**
+   * Create a text message
+   * @param senderId Sender ID
+   * @param conversationId Conversation ID
+   * @param text Message text
+   * @returns Created message
+   */
+  async createText(senderId: number, conversationId: number, text: string) {
+    const { requester_id, requested_id } = await this.assertAccess(
+      senderId,
+      conversationId,
+    );
 
-    // DTO 변환 후 반환
+    const recipientId = senderId === requester_id ? requested_id : requester_id;
+
+    // 트랜잭션 + Redis INCR로 상태 정합성 확보
+    const message = await this.prisma.$transaction(async (tx) => {
+      const msg = await tx.message.create({
+        data: {
+          conversation_id: conversationId,
+          sender_id: senderId,
+          message_text: text,
+        },
+        include: {
+          sender: { select: { id: true, profile: true } },
+          conversation: true,
+        },
+      });
+      await tx.conversation.update({
+        where: { id: conversationId },
+        data: { updated_at: new Date() },
+      });
+      return msg;
+    });
+
+    await this.redis.incr(`unread:${recipientId}:${conversationId}`);
     return this.mapMessageToDto(message);
   }
 
-  async sendImageMessage(
+  /**
+   * Create an image message
+   * @param senderId Sender ID
+   * @param conversationId Conversation ID
+   * @param file Image file
+   * @param messageText Message text
+   * @returns Created message
+   */
+  async createImage(
     senderId: number,
     conversationId: number,
     file: Express.Multer.File,
     messageText?: string,
   ) {
-    const conversation = await this.getConversationEntity(
-      conversationId,
+    // First check access to the conversation
+    await this.assertAccess(senderId, conversationId);
+
+    // Then check if this is a BETA_BAE conversation
+    const conv = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { type: true },
+    });
+
+    if (conv && conv.type === ConversationType.BETA_BAE)
+      throw new BadRequestException('Image not allowed for BETA_BAE');
+
+    const media = await this.fileSrv.uploadFile(file, 'chat-image');
+    const textMessage = await this.createText(
       senderId,
+      conversationId,
+      messageText ?? '',
     );
 
-    if (conversation.type !== ConversationType.REAL_BAE) {
-      throw new BadRequestException('Image messages not supported for BETABAE');
-    }
-
-    // 파일 업로드
-    const uploadedFile = await this.fileService.uploadFile(file, 'chat-image');
-
-    await this.prisma.message.create({
-      data: {
-        conversation_id: conversationId,
-        sender_id: senderId,
-        message_text: messageText || '',
-        is_read: false,
-        attachment_media_id: uploadedFile.id,
-      },
+    const updatedMessage = await this.prisma.message.update({
+      where: { id: textMessage.messageId },
+      data: { attachment_media_id: media.id },
       include: {
-        sender: {
-          select: { id: true },
-        },
+        sender: { select: { id: true, profile: true } },
         media: true,
+        conversation: true,
       },
     });
 
-    await this.updateConversationActivity(conversationId);
-    await this.incrementUnreadCount(senderId, conversationId);
+    return this.mapMessageToDto(updatedMessage);
   }
 
   /**
-   * Mark all unread messages in a conversation as read for a specific user
-   * This is called when a user enters a chat room screen
+   * Mark messages as read
+   * @param userId User ID
+   * @param conversationId Conversation ID
    */
-  async markMessagesAsRead(
-    userId: number,
-    conversationId: number,
-  ): Promise<void> {
-    // 내 메시지가 아닌 것만 is_read=true
+  async markRead(userId: number, conversationId: number) {
     await this.prisma.message.updateMany({
       where: {
         conversation_id: conversationId,
         sender_id: { not: userId },
         is_read: false,
       },
-      data: {
-        is_read: true,
-        read_at: new Date(),
+      data: { is_read: true, read_at: new Date() },
+    });
+    await this.redis.set(`unread:${userId}:${conversationId}`, '0');
+  }
+
+  /**
+   * Get conversation details including type
+   */
+  public async getConversationDetails(conversationId: number) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: {
+        id: true,
+        type: true,
+        match_id: true,
+        created_at: true,
+        updated_at: true,
       },
     });
-
-    // Redis unreadCount 0
-    const unreadCountKey = `unread:${userId}:${conversationId}`;
-    await this.redis.set(unreadCountKey, '0');
-  }
-
-  async getConversationWithUsers(conversationId: number) {
-    const conversation = await this.prisma.conversation.findUnique({
-      where: { id: conversationId },
-      include: { match: true },
-    });
-    if (!conversation) {
-      return null;
-    }
-    return {
-      matchId: conversation.match_id,
-      requesterUserId: conversation.match?.requester_id,
-      requestedUserId: conversation.match?.requested_id,
-    };
-  }
-
-  //
-  // Entity Access Methods
-  //
-
-  async getConversationEntity(conversationId: number, userId?: number) {
-    // DB에서 conversation
-    const conversation = await this.prisma.conversation.findUnique({
-      where: { id: conversationId },
-      include: { match: true },
-    });
-    if (!conversation) {
-      throw new NotFoundException(
-        new ErrorResponseDto(
-          `Conversation with ID ${conversationId} not found`,
-        ),
-      );
-    }
-    // 사용자가 접근 가능한지 체크
-    if (userId) {
-      const { requester_id, requested_id } = conversation.match;
-      if (userId !== requester_id && userId !== requested_id) {
-        throw new BadRequestException(
-          new ErrorResponseDto('You do not have access to this conversation'),
-        );
-      }
-    }
     return conversation;
   }
 
-  //
-  // Helper Methods (Private)
-  //
-
-  private async verifyConversationAccess(
-    userId: number,
-    conversationId: number,
-  ) {
-    const conversation = await this.prisma.conversation.findUnique({
+  /**
+   * Get conversation with user IDs for notification purposes
+   */
+  public async getConversationWithUsers(conversationId: number) {
+    const conv = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: { match: true },
     });
-    if (!conversation) {
-      throw new NotFoundException(
-        new ErrorResponseDto(
-          `Conversation with ID ${conversationId} not found`,
-        ),
-      );
-    }
-    const { requester_id, requested_id } = conversation.match;
+    if (!conv) throw new NotFoundException('Conversation not found');
 
-    // beta_bae 자동 답장 handling
-    if (userId !== requester_id && userId !== requested_id && userId != 0) {
-      throw new BadRequestException(
-        new ErrorResponseDto('You do not have access to this conversation 2'),
-      );
-    }
+    return {
+      requesterUserId: conv.match.requester_id,
+      requestedUserId: conv.match.requested_id,
+    };
   }
 
-  private async updateConversationActivity(conversationId: number) {
-    await this.prisma.conversation.update({
-      where: { id: conversationId },
-      data: { updated_at: new Date() },
+  /**
+   * Maps a database message entity to a MessageResponseDto
+   */
+  private mapMessageToDto(message: any): MessageResponseDto {
+    // Extract conversation type if available
+    const conversationType = message.conversation?.type;
+
+    // Create sender DTO
+    const senderDto = plainToInstance(MessageSenderDto, {
+      id: message.sender_id,
+      name: message.sender?.profile?.nickname || 'betabae',
+    });
+
+    // Create attachment DTO if media exists
+    let attachmentDto: MessageAttachmentDto | undefined = undefined;
+    if (message.media) {
+      attachmentDto = plainToInstance(MessageAttachmentDto, {
+        id: message.media.id,
+        url: this.fileSrv.getFile(message.media.id),
+        type: message.media.mime_type,
+      });
+    }
+
+    // Create and return the message DTO
+    return plainToInstance(MessageResponseDto, {
+      messageId: message.id,
+      conversationId: message.conversation_id,
+      sender: senderDto,
+      messageText: message.message_text,
+      sentAt: message.sent_at ? new Date(message.sent_at) : null,
+      isRead: message.is_read,
+      readAt: message.read_at ? new Date(message.read_at) : null,
+      attachment: attachmentDto,
     });
   }
 
   /**
-   * Increment the unread count for a recipient in a conversation
-   * This is called when a new message is sent and the recipient is not in the chat room screen
+   * Verify that the user has access to the conversation
+   * @returns The match object associated with the conversation
    */
-  private async incrementUnreadCount(senderId: number, conversationId: number) {
-    const conversation = await this.prisma.conversation.findUnique({
+  private async assertAccess(userId: number, conversationId: number) {
+    const conv = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: { match: true },
     });
-    if (!conversation) return;
+    if (!conv) throw new NotFoundException('Conversation not found');
 
-    const { requester_id, requested_id } = conversation.match;
-    const recipientId = senderId === requester_id ? requested_id : requester_id;
+    const { requester_id, requested_id } = conv.match;
+    if (userId !== 0 && userId !== requester_id && userId !== requested_id)
+      throw new BadRequestException('No access to this conversation');
 
-    const unreadCountKey = `unread:${recipientId}:${conversationId}`;
-    const currentCountStr = await this.redis.get(unreadCountKey);
-    const currentCount = currentCountStr ? parseInt(currentCountStr, 10) : 0;
-    await this.redis.set(unreadCountKey, (currentCount + 1).toString());
-  }
-
-  private mapMessageToDto(message: any): MessageResponseDto {
-    const attachmentDto = message.media
-      ? {
-          id: message.media.id,
-          url: message.media.file_url,
-          type: message.media.file_type,
-        }
-      : undefined;
-
-    return plainToInstance(
-      MessageResponseDto,
-      {
-        messageId: message.id,
-        conversationId: message.conversation_id,
-        sender: {
-          id: message.sender.id,
-          name: message.sender.name,
-        },
-        messageText: message.message_text,
-        sentAt: message.sent_at,
-        isRead: message.is_read,
-        readAt: message.read_at,
-        attachment: attachmentDto,
-      },
-      { excludeExtraneousValues: true },
-    );
+    // Return match object for further processing
+    return {
+      requester_id,
+      requested_id,
+    };
   }
 }

@@ -34,14 +34,28 @@ export class MessageResponseDto {
   messageText: string;
 
   @Expose()
-  @Transform(({ value }) => value?.toISOString())
+  @Transform(({ value }) => {
+    if (value instanceof Date) {
+      return value.toISOString();
+    } else if (value) {
+      return new Date(value).toISOString();
+    }
+    return null;
+  })
   sentAt: Date;
 
   @Expose()
   isRead: boolean;
 
   @Expose()
-  @Transform(({ value }) => value?.toISOString())
+  @Transform(({ value }) => {
+    if (value instanceof Date) {
+      return value.toISOString();
+    } else if (value) {
+      return new Date(value).toISOString();
+    }
+    return null;
+  })
   readAt?: Date;
 
   @Expose()

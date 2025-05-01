@@ -36,11 +36,25 @@ export class ConversationResponseDto {
   lastMessage?: MessageResponseDto;
 
   @Expose()
-  @Transform(({ value }) => value?.toISOString())
+  @Transform(({ value }) => {
+    if (value instanceof Date) {
+      return value.toISOString();
+    } else if (value) {
+      return new Date(value).toISOString();
+    }
+    return null;
+  })
   createdAt: Date;
 
   @Expose()
-  @Transform(({ value }) => value?.toISOString())
+  @Transform(({ value }) => {
+    if (value instanceof Date) {
+      return value.toISOString();
+    } else if (value) {
+      return new Date(value).toISOString();
+    }
+    return null;
+  })
   updatedAt: Date;
 }
 
