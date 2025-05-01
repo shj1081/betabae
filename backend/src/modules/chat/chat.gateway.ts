@@ -47,7 +47,7 @@ export class ChatGateway
     try {
       // 클라이언트에서 전달한 session_id 조회
       const sessionId = parse(client.request.headers.cookie || '').session_id;
-      
+
       if (!sessionId) {
         console.log('No session_id in cookies; disconnecting');
         client.disconnect();
@@ -71,7 +71,7 @@ export class ChatGateway
       // 유저 전용 socket room join
       client.join(`user:${userData.id}`);
       console.log(`Client connected: ${client.id}, user: ${userData.id}`);
-      
+
       // Send initial chat list update when user connects
       // This ensures real-time updates start immediately upon login
       await this.sendChatListUpdate(client);
@@ -107,13 +107,13 @@ export class ChatGateway
 
       // Add to socket room for this conversation
       client.join(`conversation:${conversationId}`);
-      
+
       // Track that this client is actively viewing this room
       if (!client.activeRooms) {
         client.activeRooms = new Set();
       }
       client.activeRooms.add(conversationId);
-      
+
       // Mark all messages as read when entering the chat room screen
       await this.chatService.markMessagesAsRead(client.userId, conversationId);
 
@@ -139,18 +139,18 @@ export class ChatGateway
     @MessageBody() data: { conversationId: number },
   ) {
     const { conversationId } = data;
-    
+
     // Remove from active rooms tracking
     if (client.activeRooms) {
       client.activeRooms.delete(conversationId);
     }
-    
+
     // Note: We don't leave the socket room here to keep receiving updates
     // for unread count purposes
-    
+
     return { success: true, message: 'Left chat room screen' };
   }
-  
+
   /**
    * Handle when a user exits a conversation (membership removal)
    */
@@ -162,21 +162,21 @@ export class ChatGateway
     if (!client.userId) {
       return { success: false, message: 'Unauthorized' };
     }
-    
+
     const { conversationId } = data;
-    
+
     try {
       // Remove from active rooms tracking
       if (client.activeRooms) {
         client.activeRooms.delete(conversationId);
       }
-      
+
       // Leave the socket room
       client.leave(`conversation:${conversationId}`);
-      
+
       // Here you would add logic to remove the user from the conversation membership
       // This would typically be handled by the ChatService
-      
+
       return { success: true, message: 'Exited conversation successfully' };
     } catch (error) {
       return {
@@ -209,7 +209,7 @@ export class ChatGateway
       );
 
       await this.broadcastNewMessage(conversationId, message, client.userId);
-      
+
       // Update chat list for all users in the conversation
       await this.updateChatListForConversation(conversationId);
 
@@ -221,61 +221,74 @@ export class ChatGateway
       };
     }
   }
-  
 
-  
   /**
    * Process and broadcast a new message to all clients in a conversation
    * This method is called by controllers to handle message sending
    */
-  async processAndBroadcastMessage(userId: number, conversationId: number, messageText: string) {
+  async processAndBroadcastMessage(
+    userId: number,
+    conversationId: number,
+    messageText: string,
+  ) {
     try {
       // Save the message to the database using the chat service
       const message = await this.chatService.sendTextMessage(
         userId,
         conversationId,
-        messageText
+        messageText,
       );
-      
+
       // Broadcast the message to all clients
       await this.broadcastNewMessage(conversationId, message, userId);
-      
+
       // Update chat list for all users in the conversation
       await this.updateChatListForConversation(conversationId);
-      
+
       return { success: true, message };
     } catch (error) {
       console.error('Failed to process and broadcast message:', error);
-      return { success: false, message: error.message || 'Failed to send message' };
+      return {
+        success: false,
+        message: error.message || 'Failed to send message',
+      };
     }
   }
-  
+
   /**
    * Process a beta_bae message through the LLM service and broadcast it
    * This method is called by controllers to handle beta_bae messages
    */
-  async processBetaBaeMessage(userId: number, conversationId: number, userMessageText: string) {
+  async processBetaBaeMessage(
+    userId: number,
+    conversationId: number,
+    userMessageText: string,
+  ) {
     try {
       // First send the user message
-      await this.processAndBroadcastMessage(userId, conversationId, userMessageText);
-      
+      await this.processAndBroadcastMessage(
+        userId,
+        conversationId,
+        userMessageText,
+      );
+
       // Get response from LLM
       const botResponse = await this.llmService.getBotResponse(userMessageText);
-      
+
       // Then send the bot response
       const botUserId = 0; // Use 0 or a designated bot user ID
       const message = await this.chatService.sendTextMessage(
         botUserId,
         conversationId,
-        botResponse
+        botResponse,
       );
-      
+
       // Broadcast the bot message
       await this.broadcastNewMessage(conversationId, message, botUserId);
-      
+
       // Update chat list for all users
       await this.updateChatListForConversation(conversationId);
-      
+
       return { success: true, message };
     } catch (error) {
       console.error('Failed to process beta_bae message:', error);
@@ -287,28 +300,35 @@ export class ChatGateway
    * Broadcast a new message to all clients in a conversation
    * @private Internal method used by public gateway methods
    */
-  private async broadcastNewMessage(conversationId: number, message: MessageResponseDto, senderId: number) {
+  private async broadcastNewMessage(
+    conversationId: number,
+    message: MessageResponseDto,
+    senderId: number,
+  ) {
     // Broadcast to all clients in the conversation room
     this.server
       .to(`conversation:${conversationId}`)
       .emit('newMessage', message);
-    
+
     // Get conversation users
     const conversationData =
       await this.chatService.getConversationWithUsers(conversationId);
-      
+
     if (!conversationData) return;
-    
+
     // Find other users in the conversation
     const otherUserId =
       senderId === conversationData.requesterUserId
         ? conversationData.requestedUserId
         : conversationData.requesterUserId;
-    
+
     // Get all connected sockets for this user
-    const userSockets = await this.server.in(`user:${otherUserId}`).fetchSockets();
-    const authenticatedSockets = userSockets as unknown as AuthenticatedSocket[];
-    
+    const userSockets = await this.server
+      .in(`user:${otherUserId}`)
+      .fetchSockets();
+    const authenticatedSockets =
+      userSockets as unknown as AuthenticatedSocket[];
+
     // For each connected socket of the recipient
     for (const socket of authenticatedSockets) {
       // If the user is not actively viewing this conversation
@@ -321,7 +341,7 @@ export class ChatGateway
       }
     }
   }
-  
+
   /**
    * Mark messages as read in a conversation
    * This method is called by controllers when a user views messages
@@ -330,19 +350,23 @@ export class ChatGateway
     try {
       // Mark messages as read in the database
       await this.chatService.markMessagesAsRead(userId, conversationId);
-      
+
       // Update chat list for the user to reflect read status
       const userSockets = await this.server.in(`user:${userId}`).fetchSockets();
-      const authenticatedSockets = userSockets as unknown as AuthenticatedSocket[];
-      
+      const authenticatedSockets =
+        userSockets as unknown as AuthenticatedSocket[];
+
       for (const socket of authenticatedSockets) {
         await this.sendChatListUpdate(socket);
       }
-      
+
       return { success: true };
     } catch (error) {
       console.error('Failed to mark messages as read:', error);
-      return { success: false, message: error.message || 'Failed to mark messages as read' };
+      return {
+        success: false,
+        message: error.message || 'Failed to mark messages as read',
+      };
     }
   }
 
@@ -352,36 +376,41 @@ export class ChatGateway
    */
   private async sendChatListUpdate(client: AuthenticatedSocket) {
     if (!client.userId) return;
-    
+
     try {
-      const conversations = await this.chatService.getConversations(client.userId);
+      const conversations = await this.chatService.getConversations(
+        client.userId,
+      );
       client.emit('chatListUpdate', conversations);
     } catch (error) {
       console.error('Failed to send chat list update:', error);
     }
   }
-  
+
   /**
    * Update chat list for all users in a conversation
    * @private Internal method used by public gateway methods
    */
   private async updateChatListForConversation(conversationId: number) {
     try {
-      const conversationData = 
+      const conversationData =
         await this.chatService.getConversationWithUsers(conversationId);
-      
+
       if (!conversationData) return;
-      
+
       // Update chat list for both users
       const userIds = [
         conversationData.requesterUserId,
-        conversationData.requestedUserId
+        conversationData.requestedUserId,
       ];
-      
+
       for (const userId of userIds) {
-        const userSockets = await this.server.in(`user:${userId}`).fetchSockets();
-        const authenticatedSockets = userSockets as unknown as AuthenticatedSocket[];
-        
+        const userSockets = await this.server
+          .in(`user:${userId}`)
+          .fetchSockets();
+        const authenticatedSockets =
+          userSockets as unknown as AuthenticatedSocket[];
+
         for (const socket of authenticatedSockets) {
           await this.sendChatListUpdate(socket);
         }

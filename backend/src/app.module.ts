@@ -9,7 +9,15 @@ import { FeedModule } from './modules/feed/feed.module';
 import { LlmModule } from './modules/llm/llm.module';
 
 @Module({
-  imports: [AuthModule, UserModule, FileModule, MatchModule, ChatModule, FeedModule, LlmModule],
+  imports: [
+    AuthModule,
+    UserModule,
+    FileModule,
+    MatchModule,
+    ChatModule,
+    FeedModule,
+    LlmModule,
+  ],
   controllers: [],
   providers: [],
 })

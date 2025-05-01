@@ -1,4 +1,9 @@
-import { HttpException, HttpStatus, Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  OnModuleInit,
+} from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
 
@@ -48,7 +53,11 @@ export class RedisService implements OnModuleInit {
   }
 
   // handle redis error
-  private handleRedisError(error: unknown, operation: string, key: string): never {
+  private handleRedisError(
+    error: unknown,
+    operation: string,
+    key: string,
+  ): never {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes('ECONNREFUSED')) {
       throw new HttpException(

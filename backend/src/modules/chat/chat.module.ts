@@ -9,9 +9,9 @@ import { ChatService } from './chat.service';
 
 @Module({
   imports: [
-    FileModule, 
-    forwardRef(() => AuthModule), 
-    forwardRef(() => LlmModule)
+    FileModule,
+    forwardRef(() => AuthModule),
+    forwardRef(() => LlmModule),
   ],
   providers: [ChatService, ChatGateway, ChatAnalysisService],
   controllers: [ChatController],

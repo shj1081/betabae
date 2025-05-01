@@ -1,4 +1,11 @@
-import { IsArray, ArrayMinSize, ArrayMaxSize, IsInt, Min, Max } from 'class-validator';
+import {
+  IsArray,
+  ArrayMinSize,
+  ArrayMaxSize,
+  IsInt,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class LoveLanguageSurveyScoreRequestDto {
   @IsArray()

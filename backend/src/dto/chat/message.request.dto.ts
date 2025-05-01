@@ -14,7 +14,7 @@ export class SendImageMessageDto {
   @IsInt()
   @IsNotEmpty()
   conversationId: number;
-  
+
   // Multer will handle file validation
   // This is just a placeholder field for documentation
   file?: Express.Multer.File;

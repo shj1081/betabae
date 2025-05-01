@@ -1,4 +1,11 @@
-import { Controller, Delete, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Post,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { BasicResponseDto } from 'src/dto/common/basic.response.dto';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';

@@ -10,7 +10,7 @@ import {
   Req,
   UploadedFile,
   UseGuards,
-  UseInterceptors
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ConversationType } from '@prisma/client';
@@ -96,19 +96,20 @@ export class ChatController {
     @Body() dto: SendMessageDto,
   ) {
     const userId = Number(req['user'].id);
-    
+
     // Get conversation to check type
-    const conversation = await this.chatService.getConversationEntity(conversationId);
-    
+    const conversation =
+      await this.chatService.getConversationEntity(conversationId);
+
     if (conversation.type === ConversationType.BETA_BAE) {
       // For beta_bae conversations, delegate to the gateway
       // The gateway will handle both user message and bot response
       await this.chatGateway.processBetaBaeMessage(
         userId,
         conversationId,
-        dto.messageText
+        dto.messageText,
       );
-      
+
       return new BasicResponseDto('Message processed successfully');
     } else {
       // For regular conversations, delegate to the gateway
@@ -116,9 +117,9 @@ export class ChatController {
       await this.chatGateway.processAndBroadcastMessage(
         userId,
         conversationId,
-        dto.messageText
+        dto.messageText,
       );
-      
+
       return new BasicResponseDto('Message processed successfully');
     }
   }

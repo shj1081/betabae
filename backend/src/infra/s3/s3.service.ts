@@ -41,9 +41,7 @@ export class S3Service {
 
     if (!result) {
       throw new InternalServerErrorException(
-        new ErrorResponseDto(
-          'File upload failed',
-        ),
+        new ErrorResponseDto('File upload failed'),
       );
     }
 
@@ -72,9 +70,7 @@ export class S3Service {
 
     if (!result) {
       throw new InternalServerErrorException(
-        new ErrorResponseDto(
-          'File delete failed',
-        ),
+        new ErrorResponseDto('File delete failed'),
       );
     }
   }

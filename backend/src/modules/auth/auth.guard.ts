@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
 import { RedisService } from 'src/infra/redis/redis.service';
@@ -21,9 +26,7 @@ export class AuthGuard implements CanActivate {
     const sessionData = await this.redisService.get(sessionKey);
 
     if (!sessionData) {
-      throw new UnauthorizedException(
-        new ErrorResponseDto('Invalid session'),
-      );
+      throw new UnauthorizedException(new ErrorResponseDto('Invalid session'));
     }
 
     // Store user data in request object for easy access (redis value always stored as string)

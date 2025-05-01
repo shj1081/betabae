@@ -5,7 +5,6 @@ import { ChatAnalysisRequestDto } from 'src/dto/chat/chat-analysis.request.dto';
 import { ChatAnalysisResponseDto } from 'src/dto/chat/chat-analysis.response.dto';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
 
-
 @Injectable()
 export class ChatAnalysisService {
   constructor(
@@ -13,19 +12,25 @@ export class ChatAnalysisService {
     private readonly llmService: LlmService,
   ) {}
 
-  async analyzeChat(dto: ChatAnalysisRequestDto, userId: number): Promise<ChatAnalysisResponseDto> {
+  async analyzeChat(
+    dto: ChatAnalysisRequestDto,
+    userId: number,
+  ): Promise<ChatAnalysisResponseDto> {
     // 1. Find the message and its conversation
     const message = await this.prisma.message.findUnique({
       where: { id: dto.messageId },
       include: { conversation: true },
     });
 
-    if (!message) throw new BadRequestException(new ErrorResponseDto('Message not found'));
+    if (!message)
+      throw new BadRequestException(new ErrorResponseDto('Message not found'));
 
     // not allow the message of file attachment
     if (message.attachment_media_id) {
       throw new BadRequestException(
-        new ErrorResponseDto('File/attachment messages are not supported for chat analysis.'),
+        new ErrorResponseDto(
+          'File/attachment messages are not supported for chat analysis.',
+        ),
       );
     }
     const conversationId = message.conversation_id;
@@ -41,7 +46,9 @@ export class ChatAnalysisService {
     });
     // Reverse to chronological order
     const contextMessages = messages.reverse();
-    const contextText = contextMessages.map(m => `[${m.sender_id}] ${m.message_text}`).join('\n');
+    const contextText = contextMessages
+      .map((m) => `[${m.sender_id}] ${m.message_text}`)
+      .join('\n');
 
     // 3. Send to LLM (mock)
     const llmRawResponse = await this.llmService.getAnswerFromBot(contextText);
