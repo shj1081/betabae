@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import COLORS from '@/constants/colors';
 
 interface Props {
   selected: 'liked' | 'likedMe';
@@ -36,7 +37,7 @@ const styles = StyleSheet.create({
   wrapper: {
     flexDirection: 'row',
     alignSelf: 'center',
-    backgroundColor: '#EBEBEB',
+    backgroundColor: COLORS.LIGHT_GRAY,
     borderRadius: 999,
     padding: 4,
     marginVertical: 20,
@@ -47,15 +48,15 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   selectedTab: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.WHITE,
     elevation: 2,
   },
   tabText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#000',
+    color: COLORS.BLACK,
   },
   selectedText: {
-    color: '#000',
+    color: COLORS.BLACK,
   },
 });
