@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   },
   pressedButton: {
     backgroundColor: '#C13448',
-    transform: [{ scale: 0.995 }], 
+    transform: [{ scale: 0.98 }], 
   },
   pressedText: {
     color: '#fff'
