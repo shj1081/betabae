@@ -121,11 +121,16 @@ export class UserService {
     // 프로필 생성 또는 업데이트
     if (existingProfile) {
       // interests 처리
-      const interests = dto.interests ? dto.interests : undefined;
+      const interests = dto.interests
+        ? Array.isArray(dto.interests)
+          ? dto.interests.join(',')
+          : dto.interests
+        : undefined;
 
       // 업데이트용 프로필 데이터 객체 구성 - null/undefined가 아닌 필드만 포함
       const profileData = Object.entries({
         nickname: dto.nickname,
+        introduce: dto.introduce,
         birthday: new Date(dto.birthday),
         gender: dto.gender,
         mbti: dto.mbti,
@@ -161,11 +166,12 @@ export class UserService {
       // 새 프로필 생성을 위한 타입 안전한 데이터 객체 생성
       const createProfileData = {
         nickname: dto.nickname!,
+        introduce: dto.introduce!,
         birthday: new Date(dto.birthday!),
         gender: dto.gender!,
         province: dto.province!,
         city: dto.city!,
-        mbti: dto.mbti,
+        mbti: dto.mbti!,
         interests: dto.interests,
       };
 

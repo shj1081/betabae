@@ -33,14 +33,14 @@ export class ChatService {
   //
 
   async getConversations(userId: number): Promise<ConversationListResponseDto> {
-    // 매칭 중 REAL_BAE 대화만
+    // Get conversations for the user
     const matches = await this.prisma.match.findMany({
       where: {
         OR: [{ requester_id: userId }, { requested_id: userId }],
         status: MatchStatus.ACCEPTED,
         conversations: {
           some: {
-            type: ConversationType.REAL_BAE,
+            // type: ConversationType.REAL_BAE,
           },
         },
       },
@@ -73,7 +73,7 @@ export class ChatService {
         },
         conversations: {
           where: {
-            type: ConversationType.REAL_BAE,
+            // type: ConversationType.REAL_BAE,
           },
           include: {
             messages: {
@@ -340,9 +340,11 @@ export class ChatService {
       );
     }
     const { requester_id, requested_id } = conversation.match;
-    if (userId !== requester_id && userId !== requested_id) {
+
+    // beta_bae 자동 답장 handling
+    if (userId !== requester_id && userId !== requested_id && userId != 0) {
       throw new BadRequestException(
-        new ErrorResponseDto('You do not have access to this conversation'),
+        new ErrorResponseDto('You do not have access to this conversation 2'),
       );
     }
   }

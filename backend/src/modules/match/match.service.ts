@@ -28,6 +28,13 @@ export class MatchService {
       );
     }
 
+    // if the requested user is the same as the requester, throw an error
+    if (requesterId === requestedId) {
+      throw new BadRequestException(
+        new ErrorResponseDto('Requester and requested user cannot be the same'),
+      );
+    }
+
     const requested = await this.prisma.user.findUnique({
       where: { id: requestedId },
     });
