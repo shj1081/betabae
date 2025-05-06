@@ -3,23 +3,27 @@ import { TextInput, View, StyleSheet, Text, TextInputProps } from 'react-native'
 import COLORS from '@/constants/colors';
 
 interface Props extends TextInputProps {
-  label: string;
+  label?: string;
 }
 
-const TextField = ({ label, ...props }: Props) => {
+const SelfIntroInput = ({ label = 'Self Introduction', ...props }: Props) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
         style={styles.input}
-        placeholderTextColor="#696969"
+        multiline
+        numberOfLines={6}
+        textAlignVertical="top"
+        placeholder="Please enter."
+        placeholderTextColor={COLORS.DARK_GRAY}
         {...props}
       />
     </View>
   );
-};  
+};
 
-export default TextField;
+export default SelfIntroInput;
 
 const styles = StyleSheet.create({
   container: {
@@ -29,7 +33,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 10,
-    marginHorizontal : 22,
+    marginHorizontal : 13,
     color: COLORS.BLACK,
   },
   input: {
@@ -37,9 +41,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.BLACK,
     borderRadius: 10,
     paddingVertical: 12,
-    paddingHorizontal: 12,
-    marginHorizontal : 22,
+    paddingHorizontal: 14,
+    marginHorizontal : 10,
     fontSize: 16,
     backgroundColor: COLORS.WHITE,
+    height: 150, 
   },
 });

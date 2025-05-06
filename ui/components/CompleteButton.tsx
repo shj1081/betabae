@@ -1,11 +1,6 @@
 import React from 'react';
-import {
-  Text,
-  Pressable,
-  StyleSheet,
-  GestureResponderEvent,
-  ViewStyle,
-} from 'react-native';
+import { Text, Pressable, StyleSheet, GestureResponderEvent, ViewStyle, } from 'react-native';
+import COLORS from '@/constants/colors';
 
 interface Props {
   title: string;
@@ -39,16 +34,16 @@ export default CompleteButton;
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: '#C52B67',
+    backgroundColor: COLORS.MAIN,
     paddingVertical: 16,
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 20,
-    marginHorizontal: 10,
+    marginHorizontal: 14,
     transform: [{ scale: 1 }],
   },
   text: {
-    color: '#fff',
+    color: COLORS.WHITE,
     fontWeight: '600',
     fontSize: 20,
   },
@@ -56,10 +51,10 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   pressedButton: {
-    backgroundColor: '#C13448',
-    transform: [{ scale: 0.995 }], 
+    backgroundColor: COLORS.SUB,
+    transform: [{ scale: 0.98 }], 
   },
   pressedText: {
-    color: '#fff'
+    color: COLORS.WHITE,
   },
 });

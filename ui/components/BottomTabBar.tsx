@@ -34,7 +34,6 @@ const TabItem = ({
 
   return (
     <TouchableOpacity style={styles.tabItem} onPress={onPress}>
-      {/* 아이콘에 color 넘기기 */}
       {React.cloneElement(icon as React.ReactElement, { color })}
       <Text style={[styles.label, { color }]}>{label}</Text>
     </TouchableOpacity>
@@ -69,7 +68,6 @@ const styles = StyleSheet.create({
   },
 });
 
-// ✅ 아이콘 컴포넌트 수정 (color 받게 변경)
 
 const HomeIcon = ({ color = '#666' }: { color?: string }) => (
   <Svg height="28" viewBox="0 -960 960 960" width="28" fill={color} style={styles.iconStyle}>

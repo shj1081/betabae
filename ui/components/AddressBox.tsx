@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-
 import addressData from '@/constants/addressData';
+import COLORS from '@/constants/colors';
+
 
 const AddressBox = () => {
   const [selectedRegion, setSelectedRegion] = useState('');
@@ -83,8 +84,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 10,
-    marginHorizontal : 13,
-    color: '#000',
+    marginHorizontal : 22,
+    color: COLORS.BLACK,
   },
   pickerContainer: {
     flexDirection: 'row',
@@ -94,10 +95,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderWidth: 2,
-    borderColor: '#000',
+    borderColor: COLORS.BLACK,
     borderRadius: 10,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.WHITE,
     alignItems: 'center',
-    marginHorizontal: 10, 
+    marginHorizontal: 22, 
   },
 });

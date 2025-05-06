@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import COLORS from '@/constants/colors';
+import { Colors } from 'react-native/Libraries/NewAppScreen';
 
 interface Props {
   label: string;
@@ -48,8 +50,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 10,
-    marginHorizontal : 13,
-    color: '#000',
+    marginHorizontal : 22,
+    color: COLORS.BLACK,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -59,21 +61,21 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderWidth: 2,
-    borderColor: '#000',
+    borderColor: COLORS.BLACK,
     borderRadius: 10,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.WHITE,
     alignItems: 'center',
-    marginHorizontal: 10, 
+    marginHorizontal: 22, 
   },
   selectedButton: {
-    backgroundColor: '#000',
+    backgroundColor: COLORS.BLACK,
   },
   buttonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#000',
+    color: COLORS.BLACK,
   },
   selectedButtonText: {
-    color: '#FFF',
+    color: COLORS.WHITE,
   },
 });
