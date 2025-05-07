@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Alert, Image } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import BottomTabBar from '@/components/BottomTabBar';
+import LikabilityBar from '@/components/LikabilityBar';
+import COLORS from '@/constants/colors';
 
 const { width } = Dimensions.get('window');
 
@@ -10,20 +12,11 @@ const cards = [
     nickname: 'NickName1',
     age: 27,
     location: 'Seoul',
-    tags: ['ENTJ', 'Kind', 'Honest'],
+    tags: ['ENTJ', 'Movie', 'Concert', 'OCEAN'],
+    percent: 88,
+    image: require('@/assets/images/BetaBaeLogo.png'), 
   },
-  {
-    nickname: 'NickName2',
-    age: 24,
-    location: 'Busan',
-    tags: ['ISFP', 'Creative', 'Calm'],
-  },
-  {
-    nickname: 'NickName3',
-    age: 30,
-    location: 'Incheon',
-    tags: ['ENFP', 'Funny', 'Talkative'],
-  },
+
 ];
 
 export default function MatchingPage() {
@@ -48,7 +41,7 @@ export default function MatchingPage() {
           cards={cards}
           renderCard={(card) => (
             <View style={styles.card}>
-              <View style={styles.avatar} />
+              <Image source={card.image} style={styles.avatar} />
               <View style={styles.info}>
                 <Text style={styles.name}>{card.nickname}</Text>
                 <Text style={styles.sub}>
@@ -62,6 +55,7 @@ export default function MatchingPage() {
                   ))}
                 </View>
               </View>
+              <LikabilityBar percent={card.percent} />
             </View>
           )}
           onSwipedRight={onSwipedRight}
@@ -71,8 +65,8 @@ export default function MatchingPage() {
           stackSize={2}
           verticalSwipe={true}
           horizontalSwipe={true}
-          swipeThreshold={80} // ← 민감도 살짝 줄임
-          cardHorizontalMargin={0} // ← 여백 없앰
+          swipeThreshold={80}
+          cardHorizontalMargin={0}
         />
       </View>
 
@@ -97,26 +91,29 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    marginHorizontal: 20,
   },
   card: {
-    width: width * 0.9, // 카드 크기 넓힘
-    height: width * 1.2,
+    width: width * 0.9,
+    height: width * 0.5,
     borderRadius: 20,
     backgroundColor: '#fff',
     overflow: 'hidden',
     elevation: 4,
   },
   avatar: {
-    backgroundColor: '#ccc',
-    height: '75%',
     width: '100%',
+    height: '65%',
+    resizeMode: 'cover',
   },
   info: {
-    padding: 15,
+    paddingHorizontal: 15,
+    paddingTop: 10,
   },
   name: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#000',
   },
   sub: {
     fontSize: 14,
@@ -128,7 +125,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   tag: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: COLORS.LIGHT_GRAY,
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -137,5 +134,6 @@ const styles = StyleSheet.create({
   },
   tagText: {
     fontSize: 13,
+    color: COLORS.BLACK,
   },
 });
