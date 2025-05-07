@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, SafeAreaView, Image, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { useRouter } from 'expo-router';
 import InputField from '@/components/InputField';
 import CompleteButton from '@/components/CompleteButton';
 import COLORS from '@/constants/colors';
 import api from '@/lib/api';
 
 
-export default function LoginScreen() {
+export default function LoginPage () {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const router = useRouter();
+
 
   const handleLogin = async () => {
     try {
@@ -30,7 +33,7 @@ export default function LoginScreen() {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+
           <View style={styles.flex}>
             <ScrollView
               contentContainerStyle={styles.scrollContainer}
@@ -59,15 +62,16 @@ export default function LoginScreen() {
 
               <View style={styles.registerContainer}>
                 <Text style={styles.registerText}>Don't have an account?   </Text>
-                <Text style={styles.registerLink}>Register</Text>
+                <Text
+                  style={styles.registerLink}
+                  onPress={() => router.push('/auth/signup/SignupBasicPage')}
+                >
+                  Register
+                </Text>
               </View>
             </ScrollView>
 
-            {/* <View style={styles.buttonWrapper}>
-              <CompleteButton title="Login" onPress={handleLogin} />
-            </View> */}
           </View>
-        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
         <View style={styles.buttonWrapper}>
           <CompleteButton title="Login" onPress={handleLogin} />
