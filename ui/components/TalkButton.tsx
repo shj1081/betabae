@@ -30,9 +30,9 @@ export default TalkButton;
 
 const styles = StyleSheet.create({
   wrapper: {
-    paddingLeft: 10,
-    paddingRight: 1530,
-    marginBottom: 20,
+    paddingLeft: 5,
+    paddingRight: 3,
+    marginVertical: 10,
   },
   button: {
     paddingVertical: 8,
