@@ -1,14 +1,13 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { Svg, Path } from 'react-native-svg';
+import { useRouter } from 'expo-router';
 
-interface Props {
-  onPress: () => void;
-}
+const BackButton = () => {
+  const router = useRouter();
 
-const BackButton = ({ onPress }: Props) => {
   return (
-    <TouchableOpacity onPress={onPress} style={styles.wrapper} hitSlop={10}>
+    <TouchableOpacity onPress={router.back} style={styles.wrapper} hitSlop={10}>
       <Svg
         xmlns="http://www.w3.org/2000/svg"
         height="24"
