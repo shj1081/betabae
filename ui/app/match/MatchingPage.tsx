@@ -14,7 +14,7 @@ const cards = [
     location: 'Seoul',
     tags: ['ENTJ', 'Movie', 'Concert', 'OCEAN'],
     percent: 88,
-    image: require('@/assets/images/BetaBaeLogo.png'), 
+    image: require('@/assets/images/example.jpg'), 
   },
 
 ];
@@ -78,28 +78,29 @@ export default function MatchingPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
-    backgroundColor: '#fff',
+    paddingTop: 30,
+    backgroundColor: COLORS.WHITE,
   },
   title: {
-    fontSize: 20,
+    fontSize: 30,
     fontWeight: '600',
-    marginBottom: 20,
-    alignSelf: 'center',
+    marginHorizontal: 22,
+    color: COLORS.BLACK,
   },
   swiperWrapper: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: -20,
     marginHorizontal: 20,
   },
   card: {
     width: width * 0.9,
-    height: width * 0.5,
+    height: width * 1.4,
     borderRadius: 20,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.WHITE,
     overflow: 'hidden',
-    elevation: 4,
+    elevation: 2,
   },
   avatar: {
     width: '100%',
@@ -113,11 +114,11 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000',
+    color: COLORS.BLACK,
   },
   sub: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.DARK_GRAY,
     marginBottom: 10,
   },
   tagRow: {
@@ -126,14 +127,14 @@ const styles = StyleSheet.create({
   },
   tag: {
     backgroundColor: COLORS.LIGHT_GRAY,
-    borderRadius: 12,
+    borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 4,
     marginRight: 6,
     marginTop: 6,
   },
   tagText: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.BLACK,
   },
 });
