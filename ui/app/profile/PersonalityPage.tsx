@@ -12,16 +12,16 @@ import LikertSlider from '@/components/LikertSlider';
 import COLORS from '@/constants/colors';
 
 export default function PersonalityPage() {
-  const [q1, setQ1] = useState(1);
-  const [q2, setQ2] = useState(1);
-  const [q3, setQ3] = useState(1);
-  const [q4, setQ4] = useState(1);
-  const [q5, setQ5] = useState(1);
-  const [q6, setQ6] = useState(1);
-  const [q7, setQ7] = useState(1);
-  const [q8, setQ8] = useState(1);
-  const [q9, setQ9] = useState(1);
-  const [q10, setQ10] = useState(1);
+  const [q1, setQ1] = useState(3);
+  const [q2, setQ2] = useState(3);
+  const [q3, setQ3] = useState(3);
+  const [q4, setQ4] = useState(3);
+  const [q5, setQ5] = useState(3);
+  const [q6, setQ6] = useState(3);
+  const [q7, setQ7] = useState(3);
+  const [q8, setQ8] = useState(3);
+  const [q9, setQ9] = useState(3);
+  const [q10, setQ10] = useState(3);
 
   const handleNext = () => {
 
