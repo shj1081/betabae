@@ -362,7 +362,17 @@ export class UserService {
       neuroticism: a5,
       created_at: new Date(), // mock
       updated_at: new Date(), // mock
-    };
+    }; 
+
+    // Save to database
+    await this.updateOrCreateUserPersonality(userId, {
+      openness: personality.openness,
+      conscientiousness: personality.conscientiousness,
+      extraversion: personality.extraversion,
+      agreeableness: personality.agreeableness,
+      neuroticism: personality.neuroticism,
+    });
+
     return personality;
   }
 
@@ -380,6 +390,16 @@ export class UserService {
       created_at: new Date(), // mock
       updated_at: new Date(), // mock
     };
+
+    // save to database
+    await this.updateOrCreateUserLoveLanguage(userID, {
+      words_of_affirmation: loveLanguage.words_of_affirmation,
+      acts_of_service: loveLanguage.acts_of_service,
+      receiving_gifts: loveLanguage.receiving_gifts,
+      quality_time: loveLanguage.quality_time,
+      physical_touch: loveLanguage.physical_touch,
+    });
+
     return loveLanguage;
   }
 }
