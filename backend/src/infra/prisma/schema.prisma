@@ -105,11 +105,12 @@ model Match {
 
 // ---- 채팅 시스템 ----
 model Conversation {
-  id           Int              @id @default(autoincrement())
-  match_id     Int
-  type         ConversationType @default(BETA_BAE)
-  created_at   DateTime         @default(now())
-  updated_at   DateTime         @updatedAt
+  id              Int              @id @default(autoincrement())
+  match_id        Int
+  type            ConversationType @default(BETA_BAE)
+  user_specific_id Int?            // The specific user this conversation is for (null means shared)
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
 
   match    Match     @relation(fields: [match_id], references: [id])
   messages Message[]

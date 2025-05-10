@@ -116,4 +116,20 @@ export class RedisService implements OnModuleInit {
       this.handleRedisError(error, 'delete', key);
     }
   }
+
+  // create a Redis pipeline for batch operations
+  multi() {
+    this.checkConnection();
+    return this.redis.multi();
+  }
+
+  // increment a value in redis
+  async incr(key: string): Promise<number> {
+    this.checkConnection();
+    try {
+      return await this.redis.incr(key);
+    } catch (error: unknown) {
+      this.handleRedisError(error, 'increment', key);
+    }
+  }
 }

@@ -138,11 +138,22 @@ export class MatchService {
       },
     });
 
-    // TODO: Create a conversation for the match when accepted (BETA_BAE?)
+    // Create separate BETA_BAE conversations for each user
+    // One for the requester
     await this.prisma.conversation.create({
       data: {
         match_id: matchId,
-        type: 'BETA_BAE', // Default conversation type
+        type: 'BETA_BAE',
+        user_specific_id: updatedMatch.requester_id, // Specify this is for the requester
+      },
+    });
+
+    // One for the requested user
+    await this.prisma.conversation.create({
+      data: {
+        match_id: matchId,
+        type: 'BETA_BAE',
+        user_specific_id: updatedMatch.requested_id, // Specify this is for the requested user
       },
     });
 
