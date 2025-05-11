@@ -8,12 +8,16 @@ import {
   Platform,
   Text,
 } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import BackButton from '@/components/BackButton';
 import InputField from '@/components/InputField';
 import CompleteButton from '@/components/CompleteButton';
 import COLORS from '@/constants/colors';
 
 export default function SignupAuthPage () {
+  const router = useRouter();
+  const { legal_name, birthday, gender } = useLocalSearchParams();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -24,13 +28,6 @@ export default function SignupAuthPage () {
 
   const validate = () => {
     let valid = true;
-
-    if (email === 'abc@naver.com') {
-      setEmailError('The Email already exists.');
-      valid = false;
-    } else {
-      setEmailError('');
-    }
 
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@#$%^&*!()\-+=.\/])[A-Za-z\d@#$%^&*!()\-+=.\/]{8,}$/;
     if (!passwordRegex.test(password)) {
@@ -52,9 +49,19 @@ export default function SignupAuthPage () {
     return valid;
   };
 
-  const handleNext = () => {
-    if (validate()) {
-    }
+  const handleNext = async () => {
+    if (!validate()) return;
+
+    router.push({
+      pathname: '/auth/signup/AddressPage',
+      params: {
+        email,
+        password,
+        legal_name,
+        birthday,
+        gender,
+      },
+    });
   };
 
   return (
@@ -64,7 +71,7 @@ export default function SignupAuthPage () {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <BackButton onPress={() => {}} />
+          <BackButton />
           <Text style={styles.title}>Welcome to BetaBae !</Text>
 
           <InputField
