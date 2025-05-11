@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import BackButton from '@/components/BackButton';
 import InputField from '@/components/InputField';
 import BirthdayField from '@/components/BirthdayField';
@@ -16,6 +17,8 @@ import CompleteButton from '@/components/CompleteButton';
 import COLORS from '@/constants/colors';
 
 export default function SignupBasicPage () {
+  const router = useRouter();
+
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [year, setYear] = useState(0);
@@ -24,6 +27,23 @@ export default function SignupBasicPage () {
   const [gender, setGender] = useState('');
 
   const handleNext = () => {
+    if (!name || !year || !month || !day || !gender) {
+      alert('모든 항목을 입력해주세요.');
+      return;
+    }
+
+    const birthday = `${year.toString().padStart(4, '0')}-${month
+      .toString()
+      .padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+
+    router.push({
+      pathname: '/auth/signup/SignupAuthPage',
+      params: {
+        legal_name: name,
+        birthday,
+        gender: gender.toUpperCase(), 
+      },
+    });
   };
 
   return (
@@ -33,7 +53,7 @@ export default function SignupBasicPage () {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <BackButton onPress={() => {}} />
+          <BackButton />
 
           <Text style={styles.title}>Welcome to BetaBae!</Text>
 
