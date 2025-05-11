@@ -7,26 +7,65 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
+  Alert,
 } from 'react-native';
 import BackButton from '@/components/BackButton';
 import InputField from '@/components/InputField';
 import CompleteButton from '@/components/CompleteButton';
 import COLORS from '@/constants/colors';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import api from '@/lib/api';
 
 export default function NicknamePage() {
+  const router = useRouter();
   const [nickname, setNickname] = useState('');
   const [error, setError] = useState('');
-  const router = useRouter();
 
-  const handleComplete = () => {
-    if (nickname === 'taken') {
-      setError('The nickname already exists.');
-    } else {
-      setError('');
+  const {
+    email,
+    password, 
+    legal_name,
+    birthday,
+    gender,
+    province,
+    city,
+  } = useLocalSearchParams();
 
+  const handleComplete = async () => {
+    if (!nickname) {
+      setError('Please enter a nickname.');
+      return;
+    }
+
+    try {
+      const response = await api.post('/auth/register', {
+        email,
+        password,
+        legal_name,
+      });
+
+      console.log('✅ Register success:', response.data);
+
+      router.push({
+        pathname: '/auth/WelcomePage', 
+        params: {
+          birthday,
+          gender,
+          province,
+          city,
+          nickname,
+        },
+      });
+    } catch (err: any) {
+      console.error('❌ Register failed:', err.response?.data || err.message);
+      if (err.response?.data?.message?.includes('email')) {
+        setError('The email already exists.');
+      } else {
+        Alert.alert('Registration Failed', 'An unexpected error occurred.');
+      }
     }
   };
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -35,7 +74,7 @@ export default function NicknamePage() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <BackButton onPress={() => router.back()} />
+          <BackButton />
 
           <Text style={styles.title}>Enter your nickname.</Text>
 
