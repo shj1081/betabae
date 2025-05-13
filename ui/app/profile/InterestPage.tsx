@@ -6,11 +6,14 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
+  Alert
 } from 'react-native';
 import COLORS from '@/constants/colors';
 import BackButton from '@/components/BackButton';
 import CompleteButton from '@/components/CompleteButton';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useProfileStore } from '@/store/useProfileStore';
 
 interface InterestItemProps {
   label: string;
@@ -33,6 +36,7 @@ const InterestItem = ({ label, isSelected, onPress, onDelete }: InterestItemProp
 );
 
 export default function InterestPage() {
+  const router = useRouter();
   const [interests, setInterests] = useState<string[]>([
     'Movie',
     'Cafe',
@@ -65,6 +69,19 @@ export default function InterestPage() {
     }
     setNewInterest('');
     setIsAdding(false);
+  };
+
+  const handleNext = () => {
+    if (selected.length === 0) {
+      Alert.alert('Select at least one.');
+      return;
+    }
+
+    useProfileStore.getState().setProfile({
+      interests: selected,
+    });
+
+    router.push('/profile/MbtiPage'); 
   };
 
   return (
@@ -113,7 +130,7 @@ export default function InterestPage() {
       </ScrollView>
 
       <View style={styles.buttonWrapper}>
-        <CompleteButton title="Complete" onPress={() => {}} />
+        <CompleteButton title="Next" onPress={handleNext} />
       </View>
     </View>
   );
