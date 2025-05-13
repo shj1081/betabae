@@ -64,7 +64,7 @@ export default function LoginPage () {
                 <Text style={styles.registerText}>Don't have an account?   </Text>
                 <Text
                   style={styles.registerLink}
-                  onPress={() => router.push('/auth/signup/SignupBasicPage')}
+                  onPress={() => router.push('/auth/signup/SignupPage')}
                 >
                   Register
                 </Text>
