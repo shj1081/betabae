@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Button,
+} from 'react-native';
 import BackButton from '@/components/BackButton';
 import MbtiSlider from '@/components/MbtiSlider';
 import CompleteButton from '@/components/CompleteButton';
 import COLORS from '@/constants/colors';
 import { useRouter } from 'expo-router';
+import { useProfileStore } from '@/store/useProfileStore';
+import api from '@/lib/api';
 
 export default function MbtiPage() {
   const router = useRouter();
@@ -13,9 +24,47 @@ export default function MbtiPage() {
   const [tf, setTf] = useState(50);
   const [jp, setJp] = useState(50);
 
-  const handleNext = () => {
-    // TODO: 추후 MBTI 문자 변환 및 저장 처리
+  const handleNext = async () => {
+    const mbti =
+      (ie <= 50 ? 'E' : 'I') +
+      (sn <= 50 ? 'N' : 'S') +
+      (tf <= 50 ? 'F' : 'T') +
+      (jp <= 50 ? 'P' : 'J');
 
+    useProfileStore.getState().setProfile({ mbti });
+
+    const {
+      nickname,
+      introduce,
+      birthday,
+      gender,
+      mbti: finalMbti,
+      interests,
+      province,
+      city,
+    } = useProfileStore.getState();
+
+    const payload = {
+      nickname,
+      introduce,
+      birthday,
+      gender,
+      mbti: finalMbti,
+      interests,
+      province,
+      city,
+    };
+
+    console.log('📦 보낼 데이터:', payload);
+
+    try {
+      const response = await api.put('/user/profile', payload);
+      console.log('✅ 프로필 저장 성공:', response.data);
+      router.push('/profile/PersonalityPage');
+    } catch (err: any) {
+      console.error('❌ 프로필 저장 실패:', err.response?.data || err.message);
+      alert('프로필 저장 중 오류가 발생했습니다.');
+    }
   };
 
   return (
@@ -25,7 +74,7 @@ export default function MbtiPage() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.container}>
-          <BackButton onPress={() => router.back()} />
+          <BackButton />
           <Text style={styles.title}>Enter your MBTI.</Text>
 
           <MbtiSlider labelLeft="Introverted" labelRight="Extrovert" value={ie} onChange={setIe} />
@@ -36,6 +85,7 @@ export default function MbtiPage() {
           <View style={styles.buttonWrapper}>
             <CompleteButton title="Next" onPress={handleNext} />
           </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
