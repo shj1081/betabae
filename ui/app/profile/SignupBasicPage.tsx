@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useProfileStore } from '@/store/useProfileStore';
 import BackButton from '@/components/BackButton';
 import InputField from '@/components/InputField';
 import BirthdayField from '@/components/BirthdayField';
@@ -19,7 +20,6 @@ import COLORS from '@/constants/colors';
 export default function SignupBasicPage () {
   const router = useRouter();
 
-  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [year, setYear] = useState(0);
   const [month, setMonth] = useState(0);
@@ -27,8 +27,8 @@ export default function SignupBasicPage () {
   const [gender, setGender] = useState('');
 
   const handleNext = () => {
-    if (!name || !year || !month || !day || !gender) {
-      alert('모든 항목을 입력해주세요.');
+    if (!year || !month || !day || !gender) {
+      alert('Enter all fields.');
       return;
     }
 
@@ -36,14 +36,12 @@ export default function SignupBasicPage () {
       .toString()
       .padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
 
-    router.push({
-      pathname: '/auth/signup/SignupAuthPage',
-      params: {
-        legal_name: name,
-        birthday,
-        gender: gender.toUpperCase(), 
-      },
+    useProfileStore.getState().setProfile({
+      birthday,
+      gender: gender.toUpperCase() as 'MALE' | 'FEMALE',
     });
+
+    router.push('/profile/AddressPage');
   };
 
   return (
@@ -56,13 +54,6 @@ export default function SignupBasicPage () {
           <BackButton />
 
           <Text style={styles.title}>Welcome to BetaBae!</Text>
-
-          <InputField
-            label="Name"
-            placeholder="Please enter."
-            value={name}
-            onChangeText={setName}
-          />
 
           <InputField
             label="Phone Number"
