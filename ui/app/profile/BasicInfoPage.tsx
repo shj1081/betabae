@@ -34,7 +34,7 @@ export default function BasicInfoPage() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.container}>
-          <BackButton onPress={() => router.back()} />
+          <BackButton />
 
           <Text style={styles.title}>Enter your basic information.</Text>
 
