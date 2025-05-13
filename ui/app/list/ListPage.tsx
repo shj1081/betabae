@@ -56,7 +56,7 @@ export default function ListPage() {
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={{ paddingBottom: 100 }}
       />
-        <BottomTabBar />
+      <BottomTabBar />
     </View>
   );
 }
