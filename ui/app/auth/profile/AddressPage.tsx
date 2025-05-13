@@ -13,40 +13,28 @@ import BackButton from '@/components/BackButton';
 import AddressBox from '@/components/AddressBox';
 import CompleteButton from '@/components/CompleteButton';
 import COLORS from '@/constants/colors';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import api from '@/lib/api';
+import { useRouter } from 'expo-router';
+import { useProfileStore } from '@/store/useProfileStore';
+
 
 export default function AddressPage() {
   const router = useRouter();
 
-  const { email, password, legal_name, birthday, gender } = useLocalSearchParams();
-
   const [province, setProvince] = useState('');
   const [city, setCity] = useState('');
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (!province || !city) {
-      Alert.alert('입력 오류', '주소를 모두 선택해주세요.');
+      Alert.alert('Enter all fields.');
       return;
     }
 
-    try {
-      router.push({
-        pathname: '/auth/signup/NicknamePage',
-        params: {
-          email,
-          password,
-          legal_name,
-          birthday,
-          gender,
-          province,
-          city,
-        },
-      });
-    } catch (err) {
-      console.error('❌ 저장 실패:', err);
-      Alert.alert('에러', '서버 저장 중 문제가 발생했습니다.');
-    }
+    useProfileStore.getState().setProfile({
+      province,
+      city,
+    });
+
+    router.push('/profile/NicknamePage');
   };
 
   return (
