@@ -2,15 +2,15 @@ import React from 'react';
 import { SafeAreaView, Text, StyleSheet } from 'react-native';
 import COLORS from '@/constants/colors';
 import ProfileRegisterButton from '@/components/ProfileRegisterButton';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function WelcomePage() {
   const router = useRouter();
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.welcomeText}>Welcome !</Text>
-      <ProfileRegisterButton onPress={() => router.push('/profile/BasicInfoPage')} />
+      <Text style={styles.welcomeText}>Welcome!</Text>
+      <ProfileRegisterButton onPress={() => router.push('/profile/SignupBasicPage')} />
     </SafeAreaView>
   );
 }
