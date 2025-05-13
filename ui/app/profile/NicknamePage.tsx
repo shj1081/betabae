@@ -13,57 +13,23 @@ import BackButton from '@/components/BackButton';
 import InputField from '@/components/InputField';
 import CompleteButton from '@/components/CompleteButton';
 import COLORS from '@/constants/colors';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import api from '@/lib/api';
+import { useRouter } from 'expo-router';
+import { useProfileStore } from '@/store/useProfileStore';
 
 export default function NicknamePage() {
   const router = useRouter();
   const [nickname, setNickname] = useState('');
   const [error, setError] = useState('');
 
-  const {
-    email,
-    password, 
-    legal_name,
-    birthday,
-    gender,
-    province,
-    city,
-  } = useLocalSearchParams();
-
-  const handleComplete = async () => {
+  const handleNext = async () => {
     if (!nickname) {
       setError('Please enter a nickname.');
       return;
     }
 
-    try {
-      const response = await api.post('/auth/register', {
-        email,
-        password,
-        legal_name,
-      });
+    useProfileStore.getState().setProfile({ nickname });
 
-      console.log('✅ Register success:', response.data);
-
-      router.push({
-        pathname: '/auth/WelcomePage', 
-        params: {
-          birthday,
-          gender,
-          province,
-          city,
-          nickname,
-        },
-      });
-    } catch (err: any) {
-      console.error('❌ Register failed:', err.response?.data || err.message);
-      if (err.response?.data?.message?.includes('email')) {
-        setError('The email already exists.');
-      } else {
-        Alert.alert('Registration Failed', 'An unexpected error occurred.');
-      }
-    }
+    router.push('/profile/InterestPage');
   };
 
 
@@ -87,7 +53,7 @@ export default function NicknamePage() {
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           <View style={styles.buttonWrapper}>
-            <CompleteButton title="Complete" onPress={handleComplete} />
+            <CompleteButton title="Next" onPress={handleNext} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
