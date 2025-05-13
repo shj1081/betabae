@@ -9,20 +9,21 @@ datasource db {
 
 // ---- 사용자 및 프로필 ----
 model User {
-  id                 Int                @id @default(autoincrement())
-  email              String             @unique
-  password_hash      String
-  legal_name         String
-  created_at         DateTime           @default(now())
-  updated_at         DateTime           @updatedAt
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  password_hash String
+  legal_name    String
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
-  profile            UserProfile?
-  surveyResponse     UserSurveyResponse?
-  personality        UserPersonality?
-  loveLanguage       UserLoveLanguage?
-  messages           Message[]
-  requestedMatches   Match[]            @relation("RequestedMatches")
-  requesterMatches   Match[]            @relation("RequesterMatches")
+  profile          UserProfile?
+  surveyResponse   UserSurveyResponse?
+  personality      UserPersonality?
+  loveLanguage     UserLoveLanguage?
+  messages         Message[]
+  requestedMatches Match[]             @relation("RequestedMatches")
+  requesterMatches Match[]             @relation("RequesterMatches")
+  betaBaeClone     BetaBaeClone?
 }
 
 model UserLoveLanguage {
@@ -75,8 +76,8 @@ model UserPersonality {
 
 // ---- 설문 응답 ----
 model UserSurveyResponse {
-  id         Int      @id @default(autoincrement())
-  user_id    Int      @unique
+  id          Int      @id @default(autoincrement())
+  user_id     Int      @unique
   survey_data Json
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
@@ -86,14 +87,14 @@ model UserSurveyResponse {
 
 // ---- 매칭 시스템 ----
 model Match {
-  id                 Int         @id @default(autoincrement())
-  requester_id       Int // 매칭 요청한 사용자
-  requested_id       Int // 매칭 요청 받은 사용자
-  requester_consent  Boolean     @default(true) // 요청자는 기본적으로 동의한 상태
-  requested_consent  Boolean     @default(false) // 요청 받은 사용자의 동의 여부
-  status             MatchStatus @default(PENDING)
-  created_at         DateTime    @default(now())
-  updated_at         DateTime    @updatedAt
+  id                Int         @id @default(autoincrement())
+  requester_id      Int // 매칭 요청한 사용자
+  requested_id      Int // 매칭 요청 받은 사용자
+  requester_consent Boolean     @default(true) // 요청자는 기본적으로 동의한 상태
+  requested_consent Boolean     @default(false) // 요청 받은 사용자의 동의 여부
+  status            MatchStatus @default(PENDING)
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @updatedAt
 
   requester     User           @relation("RequesterMatches", fields: [requester_id], references: [id])
   requested     User           @relation("RequestedMatches", fields: [requested_id], references: [id])
@@ -105,12 +106,12 @@ model Match {
 
 // ---- 채팅 시스템 ----
 model Conversation {
-  id              Int              @id @default(autoincrement())
-  match_id        Int
-  type            ConversationType @default(BETA_BAE)
-  user_specific_id Int?            // The specific user this conversation is for (null means shared)
-  created_at      DateTime         @default(now())
-  updated_at      DateTime         @updatedAt
+  id               Int              @id @default(autoincrement())
+  match_id         Int
+  type             ConversationType @default(BETA_BAE)
+  user_specific_id Int? // The specific user this conversation is for (null means shared)
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @updatedAt
 
   match    Match     @relation(fields: [match_id], references: [id])
   messages Message[]
@@ -154,6 +155,17 @@ model BetaBaePrompt {
   is_active  Boolean  @default(true)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+}
+
+model BetaBaeClone {
+  id           Int    @id @default(autoincrement())
+  user_id      Int    @unique
+  user_context String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id])
 }
 
 // ---- enum 정의 ----
