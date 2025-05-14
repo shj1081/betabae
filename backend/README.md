@@ -287,6 +287,11 @@ sequenceDiagram
 - `POST /chat/conversations/:conversationId/messages/text` - Send a text message
 - `POST /chat/conversations/:conversationId/messages/image` - Send an image message
 
+#### BetaBae Clone APIs
+- `POST /llm-clone/create` - Creates beta-bae clone
+- `POST /llm-clone/update` - Updates beta-bae clone
+- `POST /llm-clone/delete` - Deletes beta-bae clone
+
 #### WebSocket Events
 
 - `WS /chat` - WebSocket namespace for real-time chat functionality

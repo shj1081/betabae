@@ -1,21 +1,9 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  ParseIntPipe,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
-import { Request } from 'express';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { CreateMatchRequestDto } from 'src/dto/match/match.request.dto';
-import {
-  MatchListResponseDto,
-  MatchResponseDto,
-} from 'src/dto/match/match.response.dto';
+import { MatchListResponseDto, MatchResponseDto } from 'src/dto/match/match.response.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { MatchService } from './match.service';
+import { AuthenticatedRequest } from 'src/modules/types/authenticated-request.interface';
 
 @Controller('match')
 export class MatchController {
@@ -29,9 +17,8 @@ export class MatchController {
    */
   @UseGuards(AuthGuard)
   @Post()
-  async createMatch(@Req() req: Request, @Body() dto: CreateMatchRequestDto) {
-    const userId = Number(req['user'].id);
-    const match = await this.matchService.createMatch(userId, dto.requestedId);
+  async createMatch(@Req() req: AuthenticatedRequest, @Body() dto: CreateMatchRequestDto) {
+    const match = await this.matchService.createMatch(req.user.id, dto.requestedId);
 
     return new MatchResponseDto(match);
   }
@@ -44,12 +31,8 @@ export class MatchController {
    */
   @UseGuards(AuthGuard)
   @Post(':id/accept')
-  async acceptMatch(
-    @Req() req: Request,
-    @Param('id', ParseIntPipe) matchId: number,
-  ) {
-    const userId = Number(req['user'].id);
-    const match = await this.matchService.acceptMatch(userId, matchId);
+  async acceptMatch(@Req() req: AuthenticatedRequest, @Param('id', ParseIntPipe) matchId: number) {
+    const match = await this.matchService.acceptMatch(req.user.id, matchId);
 
     return new MatchResponseDto(match);
   }
@@ -62,12 +45,8 @@ export class MatchController {
    */
   @UseGuards(AuthGuard)
   @Post(':id/reject')
-  async rejectMatch(
-    @Req() req: Request,
-    @Param('id', ParseIntPipe) matchId: number,
-  ) {
-    const userId = Number(req['user'].id);
-    const match = await this.matchService.rejectMatch(userId, matchId);
+  async rejectMatch(@Req() req: AuthenticatedRequest, @Param('id', ParseIntPipe) matchId: number) {
+    const match = await this.matchService.rejectMatch(req.user.id, matchId);
 
     return new MatchResponseDto(match);
   }
@@ -79,9 +58,8 @@ export class MatchController {
    */
   @UseGuards(AuthGuard)
   @Get('received')
-  async getReceivedMatches(@Req() req: Request) {
-    const userId = Number(req['user'].id);
-    const matches = await this.matchService.getReceivedMatches(userId);
+  async getReceivedMatches(@Req() req: AuthenticatedRequest) {
+    const matches = await this.matchService.getReceivedMatches(req.user.id);
 
     return new MatchListResponseDto(matches);
   }
@@ -93,9 +71,8 @@ export class MatchController {
    */
   @UseGuards(AuthGuard)
   @Get()
-  async getAllMatches(@Req() req: Request) {
-    const userId = Number(req['user'].id);
-    const matches = await this.matchService.getAllMatches(userId);
+  async getAllMatches(@Req() req: AuthenticatedRequest) {
+    const matches = await this.matchService.getAllMatches(req.user.id);
 
     return new MatchListResponseDto(matches);
   }

@@ -10,15 +10,11 @@ import {
 } from '@nestjs/websockets';
 import { parse } from 'cookie';
 import { Server, Socket } from 'socket.io';
-import {
-  EnterRoomDto,
-  LeaveRoomDto,
-  SendTextDto,
-} from 'src/dto/chat/chat-gateway.dto';
+import { EnterRoomDto, LeaveRoomDto, SendTextDto } from 'src/dto/chat/chat-gateway.dto';
 import { MessageResponseDto } from 'src/dto/chat/message.response.dto';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 import { RedisService } from 'src/infra/redis/redis.service';
-import { LlmService } from '../llm/llm.service';
+import { LlmCloneService } from '../llm/llm-clone.service';
 import { ChatService } from './chat.service';
 
 interface U extends Socket {
@@ -38,7 +34,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private chatSrv: ChatService,
     private redis: RedisService,
-    private llm: LlmService,
+    private llm: LlmCloneService,
     private prisma: PrismaService,
   ) {}
 
@@ -137,10 +133,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         await this.broadcast(dto.cid, botMsg);
       }
     } catch (error) {
-      this.logger.error(
-        `Error handling BETA_BAE response: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Error handling BETA_BAE response: ${error.message}`, error.stack);
     }
   }
 
@@ -153,8 +146,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`conv:${cid}`).emit('newMessage', msg);
 
     // update chat list
-    const { requesterUserId, requestedUserId } =
-      await this.chatSrv.getConversationWithUsers(cid);
+    const { requesterUserId, requestedUserId } = await this.chatSrv.getConversationWithUsers(cid);
     await Promise.all(
       [requesterUserId, requestedUserId].map(async (uid) => {
         const list = await this.chatSrv.getConversations(uid);
