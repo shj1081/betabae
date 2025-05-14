@@ -16,10 +16,14 @@ import { UserProfileDto } from 'src/dto/user/profile.request.dto';
 import { UserProfileResponseDto } from 'src/dto/user/profile.response.dto';
 
 import { PrismaService } from 'src/infra/prisma/prisma.service';
+import { FileService } from '../file/file.service';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private fileService: FileService
+  ) {}
 
   async getAllUsersExcept(currentUserId: number) {
     return this.prisma.user.findMany({
@@ -101,7 +105,11 @@ export class UserService {
     });
   }
 
-  async updateOrCreateUserProfile(userId: number, dto: UserProfileDto) {
+  async updateOrCreateUserProfile(
+    userId: number, 
+    dto: UserProfileDto, 
+    profileImage?: Express.Multer.File
+  ) {
     // Check if user exists
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -112,11 +120,31 @@ export class UserService {
         new ErrorResponseDto(`User with ID ${userId} not found`),
       );
     }
-
-    // Check if profile exists
+    
+    // Check if profile exists with related profile image
     const existingProfile = await this.prisma.userProfile.findUnique({
       where: { user_id: userId },
+      include: { profile_image: true }
     });
+    
+    // Upload profile image if provided
+    let profileMediaId: number | undefined;
+    if (profileImage) {
+      try {
+        // Upload the file to S3 and create a media record
+        const uploadResult = await this.fileService.uploadFile(profileImage, 'profile');
+        profileMediaId = uploadResult.id;
+        
+        // If there was an existing profile image, delete it
+        if (existingProfile?.profile_media_id) {
+          await this.fileService.deleteFile(existingProfile.profile_media_id);
+        }
+      } catch (error) {
+        throw new BadRequestException(
+          new ErrorResponseDto(`Failed to upload profile image: ${error.message}`),
+        );
+      }
+    }
 
     // 프로필 생성 또는 업데이트
     if (existingProfile) {
@@ -137,6 +165,7 @@ export class UserService {
         interests,
         province: dto.province,
         city: dto.city,
+        profile_media_id: profileMediaId,
       }).reduce((acc, [key, value]) => {
         if (value !== undefined) acc[key] = value;
         return acc;
@@ -173,6 +202,7 @@ export class UserService {
         city: dto.city!,
         mbti: dto.mbti!,
         interests: dto.interests,
+        profile_media_id: profileMediaId,
       };
 
       await this.prisma.userProfile.create({

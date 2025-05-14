@@ -5,8 +5,11 @@ import {
   Post,
   Put,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { BasicResponseDto } from 'src/dto/common/basic.response.dto';
 import { UpdateCredentialDto } from 'src/dto/user/credential.request.dto';
@@ -52,14 +55,17 @@ export class UserController {
    */
   @UseGuards(AuthGuard)
   @Put('profile')
+  @UseInterceptors(FileInterceptor('profileImage'))
   async updateOrCreateUserProfile(
     @Req() req: Request,
     @Body() dto: UserProfileDto,
+    @UploadedFile() profileImage?: Express.Multer.File,
   ) {
     const userId = Number(req['user'].id);
     const updatedUser = await this.userService.updateOrCreateUserProfile(
       userId,
       dto,
+      profileImage,
     );
 
     return new UserProfileResponseDto(updatedUser.user, updatedUser.profile);
