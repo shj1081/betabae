@@ -99,4 +99,23 @@ export class MatchController {
 
     return new MatchListResponseDto(matches);
   }
+
+  /**
+   * Consents to a match, allowing for the creation of a direct conversation between users
+   * when both users have consented
+   * @param req the request object, which contains the user's id in the session
+   * @param matchId the id of the match to consent to
+   * @returns a BasicResponseDto containing the updated match
+   */
+  @UseGuards(AuthGuard)
+  @Post(':id/consent')
+  async consentToMatch(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) matchId: number,
+  ) {
+    const userId = Number(req['user'].id);
+    const match = await this.matchService.consentToMatch(userId, matchId);
+
+    return new MatchResponseDto(match);
+  }
 }

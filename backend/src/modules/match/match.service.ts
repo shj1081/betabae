@@ -274,6 +274,70 @@ export class MatchService {
     return match;
   }
 
+  async consentToMatch(
+    userId: number,
+    matchId: number,
+  ): Promise<MatchResponseDto> {
+    const match = await this.getMatchById(matchId);
+
+    // Ensure the user is part of the match
+    if (match.requester_id !== userId && match.requested_id !== userId) {
+      throw new BadRequestException(
+        new ErrorResponseDto('User is not part of this match'),
+      );
+    }
+
+    // Ensure match is in ACCEPTED status
+    if (match.status !== MatchStatus.ACCEPTED) {
+      throw new BadRequestException(
+        new ErrorResponseDto('Match must be accepted before consenting to direct conversation'),
+      );
+    }
+
+    // Update the appropriate consent field based on the user's role
+    const isRequester = match.requester_id === userId;
+    const updateData: any = {};
+    
+    if (isRequester) {
+      updateData.requester_consent = true;
+    } else {
+      updateData.requested_consent = true;
+    }
+
+    // Update the match with the consent
+    const updatedMatch = await this.prisma.match.update({
+      where: { id: matchId },
+      data: updateData,
+      include: {
+        requester: {
+          select: {
+            id: true,
+            legal_name: true,
+          },
+        },
+        requested: {
+          select: {
+            id: true,
+            legal_name: true,
+          },
+        },
+      },
+    });
+
+    // If both users have consented, create a REAL_BAE conversation
+    if (updatedMatch.requester_consent && updatedMatch.requested_consent) {
+      await this.prisma.conversation.create({
+        data: {
+          match_id: matchId,
+          type: 'REAL_BAE',
+          user_specific_id: null, // Shared conversation between both users
+        },
+      });
+    }
+
+    return this.mapMatchToDto(updatedMatch);
+  }
+
   private mapMatchToDto(match: any): MatchResponseDto {
     return plainToInstance(
       MatchResponseDto,
