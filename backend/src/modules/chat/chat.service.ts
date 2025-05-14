@@ -32,7 +32,7 @@ export class ChatService {
    * @param userId User ID
    * @returns List of conversations and total unread count
    */
-  async getConversations(userId: number) {
+  async getConversations(userId: number, type?: ConversationType) {
     const matches = await this.prisma.match.findMany({
       where: {
         OR: [{ requester_id: userId }, { requested_id: userId }],
@@ -47,6 +47,7 @@ export class ChatService {
               { user_specific_id: { not: userId } },
               { user_specific_id: null },
             ],
+            ...(type ? { type } : {}),
           },
           orderBy: { updated_at: 'desc' },
           include: {

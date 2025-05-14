@@ -14,6 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ConversationType } from '@prisma/client';
 import { Request } from 'express';
 import { ConversationListResponseDto } from 'src/dto/chat/conversation.response.dto';
 import { MessageQueryDto } from 'src/dto/chat/message-query.dto';
@@ -42,9 +43,21 @@ export class ChatController {
   @Get()
   async getConversations(
     @Req() r: Request,
+    @Query('type') type: string,
   ): Promise<ConversationListResponseDto> {
+    let conversationType: ConversationType | undefined;
+    
+    if (type) {
+      if (type.toLowerCase() === 'betabae') {
+        conversationType = ConversationType.BETA_BAE;
+      } else if (type.toLowerCase() === 'realbae') {
+        conversationType = ConversationType.REAL_BAE;
+      }
+      // If 'all' or any other value, leave conversationType as undefined
+    }
+    
     const { conversations, totalUnreadCount } =
-      await this.chatService.getConversations(Number(r['user'].id));
+      await this.chatService.getConversations(Number(r['user'].id), conversationType);
     return new ConversationListResponseDto(conversations, totalUnreadCount);
   }
 
