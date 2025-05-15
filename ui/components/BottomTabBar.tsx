@@ -1,72 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Svg, Path } from 'react-native-svg';
-
-const BottomTabBar = () => {
-  const [selectedTab, setSelectedTab] = useState('Main');
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.separator} />
-      <View style={styles.tabContainer}>
-        <TabItem label="Main" icon={<HomeIcon />} selected={selectedTab === 'Main'} onPress={() => setSelectedTab('Main')} />
-        <TabItem label="List" icon={<HeartIcon />} selected={selectedTab === 'List'} onPress={() => setSelectedTab('List')} />
-        <TabItem label="Alarm" icon={<BellIcon />} selected={selectedTab === 'Alarm'} onPress={() => setSelectedTab('Alarm')} />
-        <TabItem label="Chat" icon={<ChatIcon />} selected={selectedTab === 'Chat'} onPress={() => setSelectedTab('Chat')} />
-        <TabItem label="Profile" icon={<ProfileIcon />} selected={selectedTab === 'Profile'} onPress={() => setSelectedTab('Profile')} />
-      </View>
-    </View>
-  );
-};
-
-const TabItem = ({
-  label,
-  icon,
-  selected,
-  onPress,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  selected: boolean;
-  onPress: () => void;
-}) => {
-  const color = selected ? '#C52B67' : '#666';
-
-  return (
-    <TouchableOpacity style={styles.tabItem} onPress={onPress}>
-      {React.cloneElement(icon as React.ReactElement, { color })}
-      <Text style={[styles.label, { color }]}>{label}</Text>
-    </TouchableOpacity>
-  );
-};
-
-export default BottomTabBar;
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#fff',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#ddd',
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
-  },
-  tabItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  label: {
-    fontSize: 12,
-    marginTop: 3,
-  },
-  iconStyle: {
-    marginBottom: 5,
-  },
-});
+import { useRouter, usePathname } from 'expo-router';
 
 
 const HomeIcon = ({ color = '#666' }: { color?: string }) => (
@@ -98,3 +33,63 @@ const ProfileIcon = ({ color = '#666' }: { color?: string }) => (
     <Path d="M234-276q51-39 114-61.5T480-360q69 0 132 22.5T726-276q35-41 54.5-93T800-480q0-133-93.5-226.5T480-800q-133 0-226.5 93.5T160-480q0 59 19.5 111t54.5 93Zm246-164q-59 0-99.5-40.5T340-580q0-59 40.5-99.5T480-720q59 0 99.5 40.5T620-580q0 59-40.5 99.5T480-440Zm0 360q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q53 0 100-15.5t86-44.5q-39-29-86-44.5T480-280q-53 0-100 15.5T294-220q39 29 86 44.5T480-160Zm0-360q26 0 43-17t17-43q0-26-17-43t-43-17q-26 0-43 17t-17 43q0 26 17 43t43 17Zm0-60Zm0 360Z" />
   </Svg>
 );
+
+const tabItems = [
+  { label: 'Main', icon: HomeIcon, route: '/match/MatchingPage' },
+  { label: 'List', icon: HeartIcon, route: '/list/ListPage' },
+  { label: 'Alarm', icon: BellIcon, route: '/alarm/AlarmPage' },
+  { label: 'Chat', icon: ChatIcon, route: '/chat/ChatPage' },
+  { label: 'Profile', icon: ProfileIcon, route: '/setting/ProfilePage' },
+];
+
+const BottomTabBar = () => {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.separator} />
+      <View style={styles.tabContainer}>
+        {tabItems.map(({ label, icon: Icon, route }) => {
+          const selected = pathname === route;
+          const color = selected ? '#C52B67' : '#666';
+
+          return (
+            <TouchableOpacity key={label} style={styles.tabItem} onPress={() => router.push(route)}>
+              <Icon color={color} />
+              <Text style={[styles.label, { color }]}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+export default BottomTabBar;
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: '#fff',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#ddd',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 10,
+  },
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    fontSize: 12,
+    marginTop: 3,
+  },
+  iconStyle: {
+    marginBottom: 5,
+  },
+});
