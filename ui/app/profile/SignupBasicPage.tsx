@@ -41,7 +41,7 @@ export default function SignupBasicPage () {
       gender: gender.toUpperCase() as 'MALE' | 'FEMALE',
     });
 
-    router.push('/profile/AddressPage');
+    router.push('/profile/BasicInfoPage');
   };
 
   return (
