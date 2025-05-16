@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
 interface FilterTabsProps {
   tabs: string[];
+  selectedTab: string;
+  onTabChange: (tab: string) => void;
 }
 
-const ChatFilterTab = ({ tabs }: FilterTabsProps) => {
-  const [selectedTab, setSelectedTab] = useState(tabs[0]);
-
+const ChatFilterTab = ({ tabs, selectedTab, onTabChange }: FilterTabsProps) => {
   return (
     <View style={styles.container}>
       {tabs.map((tab) => (
@@ -17,7 +17,7 @@ const ChatFilterTab = ({ tabs }: FilterTabsProps) => {
             styles.tab,
             selectedTab === tab ? styles.selectedTab : styles.unselectedTab,
           ]}
-          onPress={() => setSelectedTab(tab)}
+          onPress={() => onTabChange(tab)} 
         >
           <Text
             style={[
