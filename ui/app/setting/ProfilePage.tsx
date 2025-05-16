@@ -1,33 +1,90 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import BottomTabBar from '@/components/BottomTabBar';
 import COLORS from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import PopupWindow from '@/components/PopupWindow';
+import api from '@/lib/api';
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState<{
+    nickname: string;
+    profile_image_url: string | null;
+  } | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      const response = await api.post('/auth/logout');
+      console.log('Logout success', response.data.message);
+
+      router.replace('/auth/LoginPage');
+    } catch (error: any) {
+      console.error('Logout failed', error.response?.data || error.message);
+    }
+  };
+
+  const fetchProfile = async () => {
+    try {
+      const response = await api.get('/user/profile'); // 실제 API 경로로 수정 필요
+      setProfile(response.data.profile);
+    } catch (error: any) {
+      console.error('Failed to load profile:', error.response?.data || error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.MAIN} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Profile</Text>
 
       <View style={styles.profileRow}>
         <Image
-          source={{ uri: 'https://i.imgur.com/5nRyz9C.png' }}
+          source={{ uri: profile?.profile_image_url || 'https://via.placeholder.com/100' }}
           style={styles.avatar}
         />
-        <Text style={styles.username}>ooo</Text>
+        <Text style={styles.username}>{profile?.nickname || 'Unknown'}</Text>
       </View>
 
       <View style={styles.menuWrapper}>
         <MenuItem icon="create-outline" label="Edit profile" onPress={() => {}} />
         <MenuItem icon="eye-outline" label="Profile Preview" onPress={() => {}} />
-        <MenuItem icon="settings-outline" label="Settings" onPress={() => {}} />
+        <MenuItem icon="settings-outline" label="Settings" onPress={() => router.push('/setting/SettingsPage')} />
       </View>
 
-      <TouchableOpacity onPress={() => {}}>
+      <TouchableOpacity onPress={() => setShowLogoutModal(true)}>
         <Text style={styles.logout}>Logout</Text>
       </TouchableOpacity>
 
       <BottomTabBar />
+
+      <PopupWindow
+        visible={showLogoutModal}
+        title="Logout"
+        message="Are you sure want to log out?"
+        onCancel={() => setShowLogoutModal(false)}
+        onConfirm={() => {
+          setShowLogoutModal(false);
+          handleLogout();
+        }}
+      />
     </View>
   );
 }
@@ -110,4 +167,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 25,
     marginBottom: 50,
   },
+  loadingContainer: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: COLORS.WHITE,
+},
 });
