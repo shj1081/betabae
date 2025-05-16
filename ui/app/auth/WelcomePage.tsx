@@ -2,7 +2,7 @@ import React from 'react';
 import { SafeAreaView, Text, StyleSheet } from 'react-native';
 import COLORS from '@/constants/colors';
 import ProfileRegisterButton from '@/components/ProfileRegisterButton';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 export default function WelcomePage() {
   const router = useRouter();
