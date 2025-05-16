@@ -15,7 +15,6 @@ import CompleteButton from '@/components/CompleteButton';
 import COLORS from '@/constants/colors';
 import { useRouter } from 'expo-router';
 import { useProfileStore } from '@/store/useProfileStore';
-import api from '@/lib/api';
 
 export default function MbtiPage() {
   const router = useRouter();
@@ -33,38 +32,7 @@ export default function MbtiPage() {
 
     useProfileStore.getState().setProfile({ mbti });
 
-    const {
-      nickname,
-      introduce,
-      birthday,
-      gender,
-      mbti: finalMbti,
-      interests,
-      province,
-      city,
-    } = useProfileStore.getState();
-
-    const payload = {
-      nickname,
-      introduce,
-      birthday,
-      gender,
-      mbti: finalMbti,
-      interests,
-      province,
-      city,
-    };
-
-    console.log('📦 보낼 데이터:', payload);
-
-    try {
-      const response = await api.put('/user/profile', payload);
-      console.log('✅ 프로필 저장 성공:', response.data);
-      router.push('/profile/PersonalityPage');
-    } catch (err: any) {
-      console.error('❌ 프로필 저장 실패:', err.response?.data || err.message);
-      alert('프로필 저장 중 오류가 발생했습니다.');
-    }
+    router.push('/profile/SelfIntroPage'); 
   };
 
   return (
