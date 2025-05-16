@@ -1,34 +1,67 @@
-import React from 'react';
-import { View, Text, StyleSheet, Dimensions, Alert, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Dimensions, Alert, Image, Platform } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import BottomTabBar from '@/components/BottomTabBar';
 import LikabilityBar from '@/components/LikabilityBar';
 import COLORS from '@/constants/colors';
+import api from '@/lib/api';
 
 const { width } = Dimensions.get('window');
 
-const cards = [
-  {
-    nickname: 'NickName1',
-    age: 27,
-    location: 'Seoul',
-    tags: ['ENTJ', 'Movie', 'Concert', 'OCEAN'],
-    percent: 88,
-    image: require('@/assets/images/example.jpg'), 
-  },
-
-];
+interface FeedUser {
+  id: number;
+  nickname: string;
+  age: number;
+  location: string;
+  gender: string;
+  city: string;
+  province: string;
+  profileImageUrl: string | null;
+  compatibilityScore: number;
+  tags?: string[]; 
+}
 
 export default function MatchingPage() {
-  const onSwipedRight = (cardIndex: number) => {
-    Alert.alert('Like!', `${cards[cardIndex]?.nickname}님을 좋아요했어요`);
+  const [cards, setCards] = useState<FeedUser[]>([]);
+
+  useEffect(() => {
+  const fetchFeed = async () => {
+    try {
+      const res = await api.get('/feed');
+      console.log('🧾 Feed response:', res.data.users); 
+      setCards(res.data.users);
+    } catch (err) {
+      console.error('❌ Feed fetch error:', err);
+    }
+  };
+
+  fetchFeed();
+}, []);
+
+
+  const onSwipedRight = async (cardIndex: number) => {
+    const likedUser = cards[cardIndex];
+    console.log('💌 likedUser:', likedUser);
+
+    try {
+      const response = await api.post('/match', {
+        requestedId: likedUser.id,
+      });
+      console.log('✅ Match created:', response.data);
+      Alert.alert('Like!', `${likedUser.nickname}님을 좋아요했어요`);
+    } catch (err: any) {
+      console.error('❌ Match create error:', err.response?.data || err.message);
+      Alert.alert('에러', err.response?.data?.message || '요청 실패');
+    }
   };
 
   const onSwipedLeft = (cardIndex: number) => {
+    console.log('Pass..');
     Alert.alert('Pass!', `${cards[cardIndex]?.nickname}님을 넘겼어요`);
   };
 
   const onSwipedBottom = (cardIndex: number) => {
+    console.log('Info!');
     Alert.alert('Info', `${cards[cardIndex]?.nickname}님의 정보를 확인합니다`);
   };
 
@@ -39,25 +72,33 @@ export default function MatchingPage() {
       <View style={styles.swiperWrapper}>
         <Swiper
           cards={cards}
-          renderCard={(card) => (
-            <View style={styles.card}>
-              <Image source={card.image} style={styles.avatar} />
-              <View style={styles.info}>
-                <Text style={styles.name}>{card.nickname}</Text>
-                <Text style={styles.sub}>
-                  {card.location} · {card.age}
-                </Text>
-                <View style={styles.tagRow}>
-                  {card.tags.map((tag, idx) => (
-                    <View style={styles.tag} key={idx}>
-                      <Text style={styles.tagText}># {tag}</Text>
-                    </View>
-                  ))}
+          renderCard={(card) =>
+            card ? (
+              <View style={styles.card}>
+                {card.profileImageUrl ? (
+                  <Image source={{ uri: card.profileImageUrl }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' }]}>
+                    <Text>No Image</Text>
+                  </View>
+                )}
+                <View style={styles.info}>
+                  <Text style={styles.name}>{card.nickname}</Text>
+                  <Text style={styles.sub}>
+                    {card.city || card.province} · {card.age}
+                  </Text>
+                  <View style={styles.tagRow}>
+                    {(card.tags || []).map((tag, idx) => (
+                      <View style={styles.tag} key={idx}>
+                        <Text style={styles.tagText}># {tag}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
+                <LikabilityBar percent={card.compatibilityScore} />
               </View>
-              <LikabilityBar percent={card.percent} />
-            </View>
-          )}
+            ) : null
+          }
           onSwipedRight={onSwipedRight}
           onSwipedLeft={onSwipedLeft}
           onSwipedBottom={onSwipedBottom}
@@ -65,7 +106,9 @@ export default function MatchingPage() {
           stackSize={2}
           verticalSwipe={true}
           horizontalSwipe={true}
-          swipeThreshold={80}
+          disableTopSwipe={Platform.OS === 'web'}
+          disableBottomSwipe={Platform.OS === 'web'}
+          swipeThreshold={Platform.OS === 'web' ? 30 : 80}
           cardHorizontalMargin={0}
         />
       </View>
@@ -95,8 +138,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   card: {
-    width: width * 0.9,
-    height: width * 1.4,
+    marginHorizontal: 400,
+    width: width * 0.5,
+    height: width * 0.5,
     borderRadius: 20,
     backgroundColor: COLORS.WHITE,
     overflow: 'hidden',
