@@ -10,6 +10,7 @@ interface ProfileStore {
   province: string;
   city: string;
   profile_image_url: string | null;
+  profile_media_id: number | null;
   setProfile: (data: Partial<ProfileStore>) => void;
   resetProfile: () => void;
 }
@@ -24,6 +25,7 @@ export const useProfileStore = create<ProfileStore>((set) => ({
   province: '',
   city: '',
   profile_image_url: null,
+  profile_media_id: null,
 
   setProfile: (data) => set((state) => ({ ...state, ...data })),
 
@@ -38,5 +40,6 @@ export const useProfileStore = create<ProfileStore>((set) => ({
       province: '',
       city: '',
       profile_image_url: null,
+      profile_media_id: null,
     }),
 }));
