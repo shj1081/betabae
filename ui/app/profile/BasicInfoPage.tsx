@@ -24,7 +24,12 @@ export default function BasicInfoPage() {
   const [drinking, setDrinking] = useState('');
 
   const handleNext = () => {
-
+    if (!job || !height || !religion || !smoking || !drinking) {
+      alert('Enter all fields.');
+      return;
+    }
+    
+    router.push('/profile/AddressPage');
   };
 
   return (
