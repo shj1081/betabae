@@ -32,8 +32,8 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '500',
-    marginBottom: 10,
-    marginHorizontal : 13,
+    marginBottom: 15,
+    marginHorizontal : 25,
     color: COLORS.BLACK,
   },
   input: {
@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    marginHorizontal : 10,
+    marginHorizontal : 22,
     fontSize: 16,
     backgroundColor: COLORS.WHITE,
     height: 150, 
