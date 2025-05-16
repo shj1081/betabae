@@ -6,17 +6,20 @@ interface Props {
   onReject: (event: GestureResponderEvent) => void;
   onAccept: (event: GestureResponderEvent) => void;
   style?: ViewStyle;
+  disabled?: boolean;
 }
 
-const MatchingButton = ({ onReject, onAccept, style }: Props) => {
+const MatchingButton = ({ onReject, onAccept, style, disabled }: Props) => {
   return (
     <View style={[styles.container, style]}>
       <Pressable
         onPress={onReject}
+        disabled={disabled}
         style={({ pressed }) => [
           styles.button,
           styles.reject,
           pressed && styles.pressed,
+          disabled && styles.disabled,
         ]}
       >
         <Text style={[styles.text, styles.rejectText]}>Reject</Text>
@@ -24,10 +27,12 @@ const MatchingButton = ({ onReject, onAccept, style }: Props) => {
 
       <Pressable
         onPress={onAccept}
+        disabled={disabled}
         style={({ pressed }) => [
           styles.button,
           styles.accept,
           pressed && styles.pressed,
+          disabled && styles.disabled,
         ]}
       >
         <Text style={[styles.text, styles.acceptText]}>Accept</Text>
@@ -72,5 +77,8 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.8,
     transform: [{ scale: 0.98 }],
+  },
+  disabled: {
+    opacity: 0.4,
   },
 });
