@@ -27,7 +27,6 @@ export default function SignupPage() {
   const [error, setError] = useState('');
 
   const validate = () => {
-    // 알림창으로 변경해야함
     if (!name || !email || !password || !confirmPassword) {
       setError('Fill in every areas.');
       return false;
@@ -60,15 +59,15 @@ export default function SignupPage() {
         legal_name: name,
         });
 
-        console.log('✅ 회원가입 성공:', response.data);
+        console.log('✅ register success:', response.data);
 
         router.push('/auth/WelcomePage');
     } catch (error: any) {
-        console.error('❌ 회원가입 실패:', error.response?.data || error.message);
+        console.error('❌ register fail:', error.response?.data || error.message);
         if (error.response?.data?.message?.includes('email')) {
-        setError('이미 사용 중인 이메일입니다.');
+        setError('already exists');
         } else {
-        Alert.alert('에러', '회원가입 중 문제가 발생했습니다.');
+        Alert.alert('error', 'register error');
         }
     }
     };
