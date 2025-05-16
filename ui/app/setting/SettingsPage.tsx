@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import BackButton from '@/components/BackButton';
 import COLORS from '@/constants/colors';
 
 export default function SettingsPage() {
   const [alarmEnabled, setAlarmEnabled] = useState(true);
   const [deactivated, setDeactivated] = useState(false);
+  const router = useRouter();
 
   return (
     <View style={styles.container}>
@@ -38,6 +40,12 @@ export default function SettingsPage() {
           thumbColor="#fff"
         />
       </View>
+
+      <View style={styles.divider} />
+
+      <TouchableOpacity onPress={() => {}} style={styles.changeWrapper}>
+        <Text style={styles.changeText}>Change password</Text>
+      </TouchableOpacity>
 
       <View style={styles.divider} />
 
@@ -79,6 +87,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.LIGHT_GRAY,
     marginBottom: 20,
     marginHorizontal: 22,
+  },
+  changeWrapper: {
+    marginVertical: 20,
+    marginHorizontal: 22,
+  },
+  changeText: {
+    fontSize: 16,
+    fontWeight: 500,
+    color: COLORS.BLACK,
   },
   deleteWrapper: {
     marginTop: 20,
