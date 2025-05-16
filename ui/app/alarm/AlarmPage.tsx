@@ -1,66 +1,81 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, FlatList } from 'react-native';
-import TalkButton from '@/components/TalkButton';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Image, FlatList, Alert, ActivityIndicator } from 'react-native';
 import MatchingButton from '@/components/MatchingButton';
 import BottomTabBar from '@/components/BottomTabBar';
 import COLORS from '@/constants/colors';
+import api from '@/lib/api';
 
-const notifications = [
-  {
-    id: '1',
-    image: require('@/assets/images/example.jpg'),
-    text: 'Match rejected 😢',
-    time: 'PM 3:30',
-    type: 'text',
-  },
-  {
-    id: '2',
-    image: require('@/assets/images/example.jpg'),
-    text: 'Someone started a chat with my BetaBae!',
-    time: 'PM 1:00',
-    type: 'chat',
-  },
-  {
-    id: '3',
-    image: require('@/assets/images/example.jpg'),
-    text: 'Matching came in 😍',
-    time: 'AM 07:30',
-    type: 'match',
-  },
-];
+interface MatchItem {
+  id: number;
+  requester: {
+    id: number;
+    legal_name: string;
+  };
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+}
 
 export default function AlarmPage() {
-  const [selected, setSelected] = useState<'reject' | 'accept' | null>(null);
+  const [matches, setMatches] = useState<MatchItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<number | null>(null);
 
-  const renderItem = ({ item }: { item: any }) => (
+  useEffect(() => {
+    const fetchMatches = async () => {
+      try {
+        const res = await api.get('/match/received');
+        setMatches(res.data.matches);
+      } catch (err) {
+        console.error('fail to alarm:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMatches();
+  }, []);
+
+  const handleDecision = async (matchId: number, action: 'accept' | 'reject') => {
+    try {
+      setProcessingId(matchId);
+      await api.post(`/match/${matchId}/${action}`);
+      setMatches((prev) => prev.filter((m) => m.id !== matchId));
+    } catch (err: any) {
+      console.error(`❌ Match ${action} error:`, err);
+      Alert.alert('Error', err.response?.data?.message || 'fail');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const renderItem = ({ item }: { item: MatchItem }) => (
     <View style={styles.notification}>
-      <Image source={item.image} style={styles.avatar} />
+      <Image source={require('@/assets/images/example.jpg')} style={styles.avatar} />
       <View style={styles.textSection}>
-        <Text style={styles.message}>{item.text}</Text>
-        <Text style={styles.time}>{item.time}</Text>
+        <Text style={styles.message}>{item.requester.legal_name}님이 매칭 요청을 보냈습니다.</Text>
+        <Text style={styles.time}>방금 전</Text>
       </View>
-      {item.type === 'chat' && (
-        <TalkButton onPress={() => {}} title="Talk with BetaBae" />
-      )}
-      {item.type === 'match' && (
-        <MatchingButton
-          selected={selected || 'reject'}
-          onSelect={setSelected}
-        />
-      )}
+      <MatchingButton
+        onAccept={() => handleDecision(item.id, 'accept')}
+        onReject={() => handleDecision(item.id, 'reject')}
+        disabled={processingId === item.id}
+      />
     </View>
   );
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Notification</Text>
-      <FlatList
-        data={notifications}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        contentContainerStyle={styles.list}
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color={COLORS.PRIMARY} style={{ marginTop: 50 }} />
+      ) : (
+        <FlatList
+          data={matches}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id.toString()}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          contentContainerStyle={styles.list}
+        />
+      )}
       <BottomTabBar />
     </View>
   );
