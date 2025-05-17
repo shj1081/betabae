@@ -87,14 +87,16 @@ model UserSurveyResponse {
 
 // ---- 매칭 시스템 ----
 model Match {
-  id                Int         @id @default(autoincrement())
-  requester_id      Int // 매칭 요청한 사용자
-  requested_id      Int // 매칭 요청 받은 사용자
-  requester_consent Boolean     @default(true) // 요청자는 기본적으로 동의한 상태
-  requested_consent Boolean     @default(false) // 요청 받은 사용자의 동의 여부
-  status            MatchStatus @default(PENDING)
-  created_at        DateTime    @default(now())
-  updated_at        DateTime    @updatedAt
+  id                       Int         @id @default(autoincrement())
+  requester_id             Int // 매칭 요청한 사용자
+  requested_id             Int // 매칭 요청 받은 사용자
+  requester_consent        Boolean     @default(true) // 요청자는 기본적으로 동의한 상태
+  requested_consent        Boolean     @default(false) // 요청 받은 사용자의 동의 여부
+  real_bae_requester_consent Boolean     @default(false) // real_bae 채팅에 대한 요청자의 동의 여부
+  real_bae_requested_consent Boolean     @default(false) // real_bae 채팅에 대한 요청 받은 사용자의 동의 여부
+  status                   MatchStatus @default(PENDING)
+  created_at               DateTime    @default(now())
+  updated_at               DateTime    @updatedAt
 
   requester     User           @relation("RequesterMatches", fields: [requester_id], references: [id])
   requested     User           @relation("RequestedMatches", fields: [requested_id], references: [id])

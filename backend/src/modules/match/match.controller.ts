@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { CreateMatchRequestDto } from 'src/dto/match/match.request.dto';
 import { MatchListResponseDto, MatchResponseDto } from 'src/dto/match/match.response.dto';
+import { AuthenticatedRequest } from 'src/modules/types/authenticated-request.interface';
 import { AuthGuard } from '../auth/auth.guard';
 import { MatchService } from './match.service';
-import { AuthenticatedRequest } from 'src/modules/types/authenticated-request.interface';
 
 @Controller('match')
 export class MatchController {
@@ -75,5 +75,58 @@ export class MatchController {
     const matches = await this.matchService.getAllMatches(req.user.id);
 
     return new MatchListResponseDto(matches);
+  }
+
+  // /**
+  //  * Consents to a match, allowing for the creation of a direct conversation between users
+  //  * when both users have consented
+  //  * @param req the request object, which contains the user's id in the session
+  //  * @param matchId the id of the match to consent to
+  //  * @returns a BasicResponseDto containing the updated match
+  //  */
+  // @UseGuards(AuthGuard)
+  // @Post(':id/consent')
+  // async consentToMatch(
+  //   @Req() req: Request,
+  //   @Param('id', ParseIntPipe) matchId: number,
+  // ) {
+  //   const userId = Number(req['user'].id);
+  //   const match = await this.matchService.consentToMatch(userId, matchId);
+
+  //   return new MatchResponseDto(match);
+  // }
+
+  /**
+   * Accepts creating a real_bae chat after beta_bae chat has been established
+   * @param req the request object, which contains the user's id in the session
+   * @param matchId the id of the match to accept for real_bae chat
+   * @returns a MatchResponseDto containing the updated match
+   */
+  @UseGuards(AuthGuard)
+  @Post(':id/real-bae/accept')
+  async acceptRealBaeChat(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) matchId: number,
+  ) {
+    const match = await this.matchService.acceptRealBaeChat(req.user.id, matchId);
+
+    return new MatchResponseDto(match);
+  }
+  
+  /**
+   * Rejects creating a real_bae chat after beta_bae chat has been established
+   * @param req the request object, which contains the user's id in the session
+   * @param matchId the id of the match to reject for real_bae chat
+   * @returns a MatchResponseDto containing the updated match
+   */
+  @UseGuards(AuthGuard)
+  @Post(':id/real-bae/reject')
+  async rejectRealBaeChat(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) matchId: number,
+  ) {
+    const match = await this.matchService.rejectRealBaeChat(req.user.id, matchId);
+
+    return new MatchResponseDto(match);
   }
 }

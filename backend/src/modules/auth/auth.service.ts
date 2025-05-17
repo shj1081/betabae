@@ -32,7 +32,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
     // create user with basic information only
-    await this.prisma.user.create({
+    const createdUser = await this.prisma.user.create({
       data: {
         legal_name: dto.legal_name,
         email: dto.email,
@@ -45,7 +45,7 @@ export class AuthService {
     const sessionId = uuidv4();
     await this.redis.set(
       `session:${sessionId}`,
-      JSON.stringify({ email: dto.email }),
+      JSON.stringify({ id: createdUser.id, email: dto.email }),
     );
     return { sessionId };
   }

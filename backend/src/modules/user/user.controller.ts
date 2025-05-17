@@ -1,4 +1,17 @@
-import { Body, Controller, Get, Post, Put, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { BasicResponseDto } from 'src/dto/common/basic.response.dto';
 import { UpdateCredentialDto } from 'src/dto/user/credential.request.dto';
 import { LoveLanguageSurveyScoreRequestDto } from 'src/dto/user/lovelanguage-survey-score.request.dto';
@@ -9,9 +22,9 @@ import { UserPersonalityDto } from 'src/dto/user/personality.request.dto';
 import { UserPersonalityResponseDto } from 'src/dto/user/personality.response.dto';
 import { UserProfileDto } from 'src/dto/user/profile.request.dto';
 import { UserProfileResponseDto } from 'src/dto/user/profile.response.dto';
+import { AuthenticatedRequest } from 'src/modules/types/authenticated-request.interface';
 import { AuthGuard } from '../auth/auth.guard';
 import { UserService } from './user.service';
-import { AuthenticatedRequest } from 'src/modules/types/authenticated-request.interface';
 
 @Controller('user')
 export class UserController {
@@ -43,8 +56,17 @@ export class UserController {
    */
   @UseGuards(AuthGuard)
   @Put('profile')
-  async updateOrCreateUserProfile(@Req() req: AuthenticatedRequest, @Body() dto: UserProfileDto) {
-    const updatedUser = await this.userService.updateOrCreateUserProfile(req.user.id, dto);
+  @UseInterceptors(FileInterceptor('profileImage'))
+  async updateOrCreateUserProfile(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: UserProfileDto,
+    @UploadedFile() profileImage?: Express.Multer.File,
+  ) {
+    const updatedUser = await this.userService.updateOrCreateUserProfile(
+      req.user.id,
+      dto,
+      profileImage,
+    );
 
     return new UserProfileResponseDto(updatedUser.user, updatedUser.profile);
   }
@@ -176,5 +198,18 @@ export class UserController {
   ) {
     const result = await this.userService.scoreLoveLanguageSurvey(req.user.id, dto);
     return new UserLoveLanguageResponseDto(result);
+  }
+
+  /**
+   * Get comprehensive user information including profile, personality, and love language data
+   * 
+   * @param id - The ID of the user to fetch information for
+   * @returns Combined user information including profile, personality, and love language data
+   * @throws NotFoundException if the user, personality, or love language data is not found
+   */
+  @UseGuards(AuthGuard)
+  @Get('info/:id')
+  async getUserInfo(@Param('id', ParseIntPipe) id: number) {
+    return await this.userService.getUserInfo(id);
   }
 }

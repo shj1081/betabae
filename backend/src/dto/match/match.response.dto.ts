@@ -10,6 +10,9 @@ export class MatchUserInfoDto {
 
   @Expose()
   email: string;
+  
+  @Expose()
+  nickname: string;
 }
 
 export class MatchResponseDto {
@@ -28,18 +31,24 @@ export class MatchResponseDto {
   status: MatchStatus;
 
   @Expose()
-  requester_consent: boolean;
+  requesterConsent: boolean;
 
   @Expose()
-  requested_consent: boolean;
+  requestedConsent: boolean;
+  
+  @Expose()
+  realBaeRequesterConsent: boolean;
+
+  @Expose()
+  realBaeRequestedConsent: boolean;
 
   @Expose()
   @Transform(({ value }) => value?.toISOString())
-  created_at: Date;
+  createdAt: Date;
 
   @Expose()
   @Transform(({ value }) => value?.toISOString())
-  updated_at: Date;
+  updatedAt: Date;
 
   constructor(partial: Partial<MatchResponseDto>) {
     Object.assign(this, partial);

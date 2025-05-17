@@ -14,10 +14,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ConversationType } from '@prisma/client';
 import { Request } from 'express';
 import { ConversationListResponseDto } from 'src/dto/chat/conversation.response.dto';
 import { MessageQueryDto } from 'src/dto/chat/message-query.dto';
 import {
+  SendFileMessageDto,
   SendImageMessageDto,
   SendMessageDto,
 } from 'src/dto/chat/message.request.dto';
@@ -42,9 +44,21 @@ export class ChatController {
   @Get()
   async getConversations(
     @Req() r: Request,
+    @Query('type') type: string,
   ): Promise<ConversationListResponseDto> {
+    let conversationType: ConversationType | undefined;
+    
+    if (type) {
+      if (type.toLowerCase() === 'betabae') {
+        conversationType = ConversationType.BETA_BAE;
+      } else if (type.toLowerCase() === 'realbae') {
+        conversationType = ConversationType.REAL_BAE;
+      }
+      // If 'all' or any other value, leave conversationType as undefined
+    }
+    
     const { conversations, totalUnreadCount } =
-      await this.chatService.getConversations(Number(r['user'].id));
+      await this.chatService.getConversations(Number(r['user'].id), conversationType);
     return new ConversationListResponseDto(conversations, totalUnreadCount);
   }
 
@@ -95,6 +109,29 @@ export class ChatController {
     }
 
     const message = await this.chatService.createImage(
+      Number(r['user'].id),
+      cid,
+      file,
+      dto.messageText,
+    );
+
+    await this.chatGateway.broadcast(cid, message);
+    return { ok: true, message };
+  }
+  
+  @Post(':cid/messages/file')
+  @UseInterceptors(FileInterceptor('file'))
+  async sendFileMessage(
+    @Req() r: Request,
+    @Param('cid', ParseIntPipe) cid: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: SendFileMessageDto,
+  ): Promise<{ ok: boolean; message: MessageResponseDto }> {
+    if (!file) {
+      throw new BadRequestException(new ErrorResponseDto('File is required'));
+    }
+
+    const message = await this.chatService.createFile(
       Number(r['user'].id),
       cid,
       file,

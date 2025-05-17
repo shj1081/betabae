@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { plainToInstance } from 'class-transformer';
+import { Gender, MBTI } from '@prisma/client';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
 import { UpdateCredentialDto } from 'src/dto/user/credential.request.dto';
 import { UserLoveLanguageDto } from 'src/dto/user/lovelanguage.request.dto';
@@ -13,13 +14,18 @@ import { UserLoveLanguageResponseDto } from 'src/dto/user/lovelanguage.response.
 import { UserPersonalityDto } from 'src/dto/user/personality.request.dto';
 import { UserPersonalityResponseDto } from 'src/dto/user/personality.response.dto';
 import { UserProfileDto } from 'src/dto/user/profile.request.dto';
-import { UserProfileResponseDto } from 'src/dto/user/profile.response.dto';
+import { ProfileDto, UserProfileResponseDto } from 'src/dto/user/profile.response.dto';
+import { UserInfoResponseDto } from 'src/dto/user/user-info.response.dto';
 
 import { PrismaService } from 'src/infra/prisma/prisma.service';
+import { FileService } from '../file/file.service';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private fileService: FileService
+  ) {}
 
   async getAllUsersExcept(currentUserId: number) {
     return this.prisma.user.findMany({
@@ -101,7 +107,11 @@ export class UserService {
     });
   }
 
-  async updateOrCreateUserProfile(userId: number, dto: UserProfileDto) {
+  async updateOrCreateUserProfile(
+    userId: number, 
+    dto: UserProfileDto, 
+    profileImage?: Express.Multer.File
+  ) {
     // Check if user exists
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -112,11 +122,31 @@ export class UserService {
         new ErrorResponseDto(`User with ID ${userId} not found`),
       );
     }
-
-    // Check if profile exists
+    
+    // Check if profile exists with related profile image
     const existingProfile = await this.prisma.userProfile.findUnique({
       where: { user_id: userId },
+      include: { profile_image: true }
     });
+    
+    // Upload profile image if provided
+    let profileMediaId: number | undefined;
+    if (profileImage) {
+      try {
+        // Upload the file to S3 and create a media record
+        const uploadResult = await this.fileService.uploadFile(profileImage, 'profile');
+        profileMediaId = uploadResult.id;
+        
+        // If there was an existing profile image, delete it
+        if (existingProfile?.profile_media_id) {
+          await this.fileService.deleteFile(existingProfile.profile_media_id);
+        }
+      } catch (error) {
+        throw new BadRequestException(
+          new ErrorResponseDto(`Failed to upload profile image: ${error.message}`),
+        );
+      }
+    }
 
     // 프로필 생성 또는 업데이트
     if (existingProfile) {
@@ -137,6 +167,7 @@ export class UserService {
         interests,
         province: dto.province,
         city: dto.city,
+        profile_media_id: profileMediaId,
       }).reduce((acc, [key, value]) => {
         if (value !== undefined) acc[key] = value;
         return acc;
@@ -173,6 +204,7 @@ export class UserService {
         city: dto.city!,
         mbti: dto.mbti!,
         interests: dto.interests,
+        profile_media_id: profileMediaId,
       };
 
       await this.prisma.userProfile.create({
@@ -401,5 +433,107 @@ export class UserService {
     });
 
     return loveLanguage;
+  }
+
+  /**
+   * Get comprehensive user information including profile, personality, and love language data
+   * 
+   * @param userId - The ID of the user to fetch information for
+   * @returns Combined user information including profile, personality, and love language data
+   * @throws NotFoundException if the user, personality, or love language data is not found
+   */
+  async getUserInfo(userId: number) {
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        legal_name: true,
+        profile: {
+          select: {
+            nickname: true,
+            birthday: true,
+            introduce: true,
+            gender: true,
+            mbti: true,
+            interests: true,
+            province: true,
+            city: true,
+            profile_image: {
+              select: {
+                file_url: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException(
+        new ErrorResponseDto(`User with ID ${userId} not found`),
+      );
+    }
+
+    // Get personality data
+    const personality = await this.prisma.userPersonality.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!personality) {
+      throw new NotFoundException(
+        new ErrorResponseDto(`Personality data for user with ID ${userId} not found`),
+      );
+    }
+
+    // Get love language data
+    const loveLanguage = await this.prisma.userLoveLanguage.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!loveLanguage) {
+      throw new NotFoundException(
+        new ErrorResponseDto(`Love language data for user with ID ${userId} not found`),
+      );
+    }
+
+    // Format user profile data
+    const userDto = {
+      id: user.id,
+      email: user.email,
+      legal_name: user.legal_name,
+    };
+
+    // Convert profile data to match ProfileDto type
+    const profileDto: ProfileDto = user.profile
+      ? {
+          nickname: user.profile.nickname,
+          birthday: user.profile.birthday,
+          introduce: user.profile.introduce || undefined, // Convert null to undefined
+          gender: user.profile.gender,
+          mbti: user.profile.mbti || undefined, // Convert null to undefined
+          interests: typeof user.profile.interests === 'string' 
+            ? user.profile.interests.split(',') 
+            : (user.profile.interests as string[] || []),
+          province: user.profile.province,
+          city: user.profile.city,
+          profile_image_url: user.profile.profile_image?.file_url || undefined,
+        }
+      : { // Create a default profile if null to satisfy type requirements
+          nickname: '',
+          birthday: new Date(),
+          gender: Gender.MALE,
+          interests: [],
+          province: '',
+          city: '',
+        };
+
+    return new UserInfoResponseDto(
+      userDto,
+      profileDto,
+      plainToInstance(UserPersonalityResponseDto, personality, { excludeExtraneousValues: true }),
+      plainToInstance(UserLoveLanguageResponseDto, loveLanguage, { excludeExtraneousValues: true }),
+    );
   }
 }

@@ -32,7 +32,7 @@ export class ChatService {
    * @param userId User ID
    * @returns List of conversations and total unread count
    */
-  async getConversations(userId: number) {
+  async getConversations(userId: number, type?: ConversationType) {
     const matches = await this.prisma.match.findMany({
       where: {
         OR: [{ requester_id: userId }, { requested_id: userId }],
@@ -47,6 +47,7 @@ export class ChatService {
               { user_specific_id: { not: userId } },
               { user_specific_id: null },
             ],
+            ...(type ? { type } : {}),
           },
           orderBy: { updated_at: 'desc' },
           include: {
@@ -224,6 +225,56 @@ export class ChatService {
       senderId,
       conversationId,
       messageText ?? '',
+    );
+
+    const updatedMessage = await this.prisma.message.update({
+      where: { id: textMessage.messageId },
+      data: { attachment_media_id: media.id },
+      include: {
+        sender: { select: { id: true, profile: true } },
+        media: true,
+        conversation: true,
+      },
+    });
+
+    return this.mapMessageToDto(updatedMessage);
+  }
+
+  /**
+   * Create a file message
+   * @param senderId Sender ID
+   * @param conversationId Conversation ID
+   * @param file Any file
+   * @param messageText Message text
+   * @returns Created message
+   */
+  async createFile(
+    senderId: number,
+    conversationId: number,
+    file: Express.Multer.File,
+    messageText?: string,
+  ) {
+    await this.assertAccess(senderId, conversationId);
+
+    // Get conversation details to check if it's BETA_BAE
+    const conv = await this.getConversationDetails(conversationId);
+    if (!conv) {
+      throw new NotFoundException(
+        new ErrorResponseDto('Conversation not found'),
+      );
+    }
+    
+    if (conv.type === ConversationType.BETA_BAE) {
+      throw new BadRequestException(
+        new ErrorResponseDto('File attachments not allowed for BETA_BAE'),
+      );
+    }
+
+    const media = await this.fileSrv.uploadFile(file, 'chat-file');
+    const textMessage = await this.createText(
+      senderId,
+      conversationId,
+      messageText ?? `File: ${file.originalname}`,
     );
 
     const updatedMessage = await this.prisma.message.update({
