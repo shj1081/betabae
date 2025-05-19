@@ -23,7 +23,7 @@ export default function PersonalityResultPage() {
   useEffect(() => {
     const fetchPersonality = async () => {
       try {
-        const res = await api.get('/user/personality'); // ✅ API 호출
+        const res = await api.get('/user/personality'); 
         setScores(res.data);
       } catch (err: any) {
         console.error('❌ 성격 정보 불러오기 실패:', err.response?.data || err.message);
@@ -80,7 +80,7 @@ export default function PersonalityResultPage() {
           )}
 
           <View style={styles.buttonWrapper}>
-            <CompleteButton title="Next" onPress={() => router.push('/nextStep')} />
+            <CompleteButton title="Next" onPress={() => router.push('/profile/LoveLanguagePage')} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
