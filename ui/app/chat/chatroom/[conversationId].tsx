@@ -28,12 +28,15 @@ export default function ChatRoomPage() {
   const [text, setText] = useState('');
   const scrollRef = useRef<ScrollView>(null);
   const [partnerName, setPartnerName] = useState('');
-  const [myName, setMyName] = useState('You'); // 기본값을 'You'로
+  const [myName, setMyName] = useState('');
 
   useEffect(() => {
     const fetchMessages = async () => {
       try {
         const res = await api.get(`/chat/conversations/${conversationId}/messages`);
+        const meName = res.data.me?.name;
+        setMyName(meName || '');
+
         const sortedMessages = res.data.messages.sort(
           (a: Message, b: Message) =>
             new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
@@ -41,10 +44,8 @@ export default function ChatRoomPage() {
 
         setMessages(sortedMessages);
 
-        const last = sortedMessages.at(-1);
-        if (last?.sender.name !== 'You') {
-          setPartnerName(last.sender.name);
-        }
+        const other = sortedMessages.find((msg) => msg.sender.name !== meName);
+        if (other) setPartnerName(other.sender.name);
       } catch (err) {
         console.error('❌ 메시지 불러오기 실패:', err);
       }
@@ -56,14 +57,20 @@ export default function ChatRoomPage() {
     socket.emit('enter', { cid: Number(conversationId) });
 
     socket.on('newMessage', (msg: Message) => {
-      setMessages(prev => [...prev, msg]);
+
+      const exists = messages.find((m) => m.messageId === msg.messageId);
+      if (exists) return;
+
+      if (msg.sender.name === myName) return;
+
+      setMessages((prev) => [...prev, msg]);
     });
 
     return () => {
       socket.emit('leave', { cid: Number(conversationId) });
       socket.off('newMessage');
     };
-  }, [conversationId]);
+  }, [conversationId, myName, messages]);
 
   useEffect(() => {
     scrollToBottom();
@@ -85,7 +92,7 @@ export default function ChatRoomPage() {
       sentAt: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, newMessage]);
+    setMessages((prev) => [...prev, newMessage]);
 
     const socket = connectSocket();
     socket.emit('text', {
@@ -142,7 +149,7 @@ export default function ChatRoomPage() {
           onChangeText={setText}
         />
         <TouchableOpacity style={styles.sendButton} onPress={sendText}>
-          <Text style={styles.sendText}>↑</Text>
+          <Text style={styles.sendText}>send</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -221,13 +228,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: COLORS.LIGHT_GRAY,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendText: {
-    fontSize: 18,
+    fontSize: 14,
     color: COLORS.BLACK,
-    fontWeight: '700',
+    fontWeight: '500',
   },
 });
