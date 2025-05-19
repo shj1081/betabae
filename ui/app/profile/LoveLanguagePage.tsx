@@ -50,7 +50,7 @@ export default function LoveLanguagePage() {
       return;
     }
 
-    // 점수 매핑 (1등은 5점, 2등은 4점, ... 5등은 1점)
+    // 점수 매핑 부분 수정
     const scores = Array(5).fill(0);
     selectedOrder.forEach((language, index) => {
       const score = 5 - index;
@@ -65,11 +65,11 @@ export default function LoveLanguagePage() {
         answers: scores,
       });
 
-      Alert.alert('성공', '러브랭귀지 결과가 저장되었습니다.');
+      Alert.alert('success', '러브랭귀지 결과가 저장되었습니다.');
       router.push('/profile/SeriousnessPage');
     } catch (err: any) {
-      console.error('❌ 전송 실패:', err.response?.data || err.message);
-      Alert.alert('오류', '저장 중 오류가 발생했습니다.');
+      console.error('❌ error:', err.response?.data || err.message);
+      Alert.alert('error', '저장 중 오류가 발생했습니다.');
     }
   };
 
