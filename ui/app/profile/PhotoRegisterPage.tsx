@@ -84,7 +84,7 @@ export default function PhotoRegisterPage() {
 
       console.log('✅ 프로필 등록 성공:', res.data);
       Alert.alert('✅ 프로필이 등록되었습니다!');
-      router.push('/match/MatchingPage');
+      router.push('/profile/PersonalityPage');
     } catch (err: any) {
       console.error('❌ Upload failed:', err);
       Alert.alert('Upload failed', err.response?.data?.message || err.message);
@@ -105,7 +105,7 @@ export default function PhotoRegisterPage() {
 
         <View style={styles.buttonWrapper}>
           <CompleteButton
-            title={uploading ? 'Uploading...' : 'Submit'}
+            title={uploading ? 'Uploading...' : 'Next'}
             onPress={handleNext}
             disabled={uploading}
           />
