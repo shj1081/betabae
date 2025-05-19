@@ -5,7 +5,7 @@ import BackButton from '@/components/BackButton';
 import COLORS from '@/constants/colors';
 
 export default function SettingsPage() {
-  const [alarmEnabled, setAlarmEnabled] = useState(true);
+  const [alarmEnabled, setAlarmEnabled] = useState(false);
   const [deactivated, setDeactivated] = useState(false);
   const router = useRouter();
 
@@ -16,7 +16,7 @@ export default function SettingsPage() {
       <View style={styles.option}>
         <View style={styles.labelWrapper}>
           <Text style={styles.label}>Alarm</Text>
-          <Text style={styles.description}>Not receive any notifications.</Text>
+          <Text style={styles.description}>Not Receive any notifications.</Text>
         </View>
         <Switch
           value={alarmEnabled}
@@ -43,7 +43,7 @@ export default function SettingsPage() {
 
       <View style={styles.divider} />
 
-      <TouchableOpacity onPress={() => {}} style={styles.changeWrapper}>
+      <TouchableOpacity onPress={() => router.push('/setting/ChangePasswordPage')} style={styles.changeWrapper}>
         <Text style={styles.changeText}>Change password</Text>
       </TouchableOpacity>
 
