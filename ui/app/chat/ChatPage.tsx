@@ -1,15 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Image,
+} from 'react-native';
 import ChatFilterTab from '@/components/ChatFilterTab';
 import BottomTabBar from '@/components/BottomTabBar';
 import COLORS from '@/constants/colors';
 import { useRouter } from 'expo-router';
-import { Image } from 'react-native';
 import api from '@/lib/api';
+import { connectSocket } from '@/lib/socket';
 
 interface ChatPartner {
   conversationId: string;
-  type: 'BETA_BAE' | 'REAL_BAE'; 
+  type: 'BETA_BAE' | 'REAL_BAE';
   chatPartner: {
     nickname: string;
     profileImageUrl?: string;
@@ -21,8 +29,7 @@ interface ChatPartner {
   lastMessageTime?: string;
 }
 
-
-export default function ChatPage () {
+export default function ChatPage() {
   const [tab, setTab] = useState('All');
   const [conversations, setConversations] = useState<ChatPartner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,9 +51,18 @@ export default function ChatPage () {
     };
 
     fetchConversations();
+
+    const socket = connectSocket();
+    socket.on('chatListUpdate', (data: { conversations: ChatPartner[] }) => {
+      setConversations(data.conversations);
+    });
+
+    return () => {
+      socket.off('chatListUpdate');
+    };
   }, []);
 
-  const filtered = conversations.filter(conv => {
+  const filtered = conversations.filter((conv) => {
     if (tab === 'All') return true;
     if (tab === 'BetaBae') return conv.type === 'BETA_BAE';
     if (tab === 'RealBae') return conv.type === 'REAL_BAE';
@@ -55,13 +71,13 @@ export default function ChatPage () {
 
   return (
     <View style={styles.container}>
-    <Text style={styles.title}>Chat</Text>
+      <Text style={styles.title}>Chat</Text>
       <ChatFilterTab tabs={tabs} selectedTab={tab} onTabChange={setTab} />
       {loading ? (
         <ActivityIndicator size="large" color={COLORS.PRIMARY} style={{ marginTop: 50 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          {filtered.map((conv) => ( 
+          {filtered.map((conv) => (
             <TouchableOpacity
               key={conv.conversationId}
               style={styles.chatCard}
@@ -71,18 +87,19 @@ export default function ChatPage () {
                 <Image
                   source={
                     conv.type === 'BETA_BAE'
-                      ? require('@/assets/images/beta.png') 
-                      : conv.chatPartner.profileImageUrl
-                        ? { uri: conv.chatPartner.profileImageUrl }
-                        : require('@/assets/images/example.jpg')
+                      ? require('@/assets/images/beta.png')
+                      : conv.chatPartner.profileImageUrl && typeof conv.chatPartner.profileImageUrl === 'string'
+                      ? { uri: conv.chatPartner.profileImageUrl }
+                      : require('@/assets/images/example.jpg')
                   }
                   style={styles.avatar}
+                  onError={() => console.warn('이미지 로드 실패:', conv.chatPartner.profileImageUrl)}
                 />
                 <View>
                   <Text style={styles.nickname}>{conv.chatPartner.nickname || '이름 없음'}</Text>
-                    <Text style={styles.message} numberOfLines={1}>
-                      {conv.lastMessage?.messageText || '...'}
-                    </Text>
+                  <Text style={styles.message} numberOfLines={1}>
+                    {conv.lastMessage?.messageText || '...'}
+                  </Text>
                 </View>
               </View>
 
@@ -130,16 +147,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-
   leftRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-
   rightColumn: {
     alignItems: 'flex-end',
   },
-
   avatar: {
     width: 44,
     height: 44,
@@ -147,33 +161,28 @@ const styles = StyleSheet.create({
     marginRight: 12,
     backgroundColor: COLORS.GRAY,
   },
-
   nickname: {
     fontSize: 15,
     fontWeight: '600',
     color: COLORS.BLACK,
   },
-
   message: {
     fontSize: 13,
     color: COLORS.DARK_GRAY,
     marginTop: 3,
     maxWidth: 200,
   },
-
   time: {
     fontSize: 12,
     color: COLORS.DARK_GRAY,
     marginBottom: 6,
   },
-
   badge: {
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: COLORS.SUB,
     borderRadius: 12,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
-
   badgeText: {
     color: '#fff',
     fontSize: 11,
