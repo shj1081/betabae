@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, Alert, Image, Platform } from 'react-native';
+import { useRouter } from 'expo-router';
 import Swiper from 'react-native-deck-swiper';
 import BottomTabBar from '@/components/BottomTabBar';
 import LikabilityBar from '@/components/LikabilityBar';
 import COLORS from '@/constants/colors';
 import api from '@/lib/api';
-
-const { width } = Dimensions.get('window');
 
 interface FeedUser {
   id: number;
@@ -18,30 +17,47 @@ interface FeedUser {
   province: string;
   profileImageUrl: string | null;
   compatibilityScore: number;
-  tags?: string[]; 
+  tags?: string[];
 }
 
 export default function MatchingPage() {
+  const router = useRouter();
   const [cards, setCards] = useState<FeedUser[]>([]);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [showFeedback, setShowFeedback] = useState(false);
 
   useEffect(() => {
-  const fetchFeed = async () => {
-    try {
-      const res = await api.get('/feed');
-      console.log('🧾 Feed response:', res.data.users); 
-      setCards(res.data.users);
-    } catch (err) {
-      console.error('❌ Feed fetch error:', err);
-    }
+    const fetchFeed = async () => {
+      try {
+        const res = await api.get('/feed');
+        console.log('🧾 Feed response:', res.data.users);
+        setCards(res.data.users);
+      } catch (err) {
+        console.error('❌ Feed fetch error:', err);
+      }
+    };
+
+    fetchFeed();
+  }, []);
+
+  const showFeedbackMessage = (text: string) => {
+    setFeedbackText(text);
+    setShowFeedback(true);
+    setTimeout(() => setShowFeedback(false), 500);
   };
 
-  fetchFeed();
-}, []);
-
+  const onSwipedTop = (cardIndex: number) => {
+    const user = cards[cardIndex];
+    console.log('🔍 Profile detail:', user);
+    router.push({
+      pathname: `/match/user/${user.id}`,
+      state: { score: user.compatibilityScore },
+    });
+  };
 
   const onSwipedRight = async (cardIndex: number) => {
     const likedUser = cards[cardIndex];
-    console.log('💌 likedUser:', likedUser);
+    showFeedbackMessage('Like 😍');
 
     try {
       const response = await api.post('/match', {
@@ -56,6 +72,7 @@ export default function MatchingPage() {
   };
 
   const onSwipedLeft = (cardIndex: number) => {
+    showFeedbackMessage('Pass 😥');
     console.log('Pass..');
     Alert.alert('Pass!', `${cards[cardIndex]?.nickname}님을 넘겼어요`);
   };
@@ -102,17 +119,22 @@ export default function MatchingPage() {
           onSwipedRight={onSwipedRight}
           onSwipedLeft={onSwipedLeft}
           onSwipedBottom={onSwipedBottom}
+          onSwipedTop={onSwipedTop}
           backgroundColor="transparent"
           stackSize={2}
           verticalSwipe={true}
           horizontalSwipe={true}
-          disableTopSwipe={Platform.OS === 'web'}
+          disableTopSwipe={false}
           disableBottomSwipe={Platform.OS === 'web'}
           swipeThreshold={Platform.OS === 'web' ? 30 : 80}
           cardHorizontalMargin={0}
         />
+        {showFeedback && (
+          <View style={styles.feedbackContainer}>
+            <Text style={styles.feedbackText}>{feedbackText}</Text>
+          </View>
+        )}
       </View>
-
       <BottomTabBar />
     </View>
   );
@@ -134,17 +156,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -20,
-    marginHorizontal: 20,
   },
   card: {
-    marginHorizontal: 400,
-    width: width * 0.5,
-    height: width * 0.5,
+    width: '70%',
+    height: '100%',
     borderRadius: 20,
     backgroundColor: COLORS.WHITE,
-    overflow: 'hidden',
     elevation: 2,
+    alignSelf: 'center',
   },
   avatar: {
     width: '100%',
@@ -180,5 +199,23 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 12,
     color: COLORS.BLACK,
+  },
+  feedbackContainer: {
+    position: 'absolute',
+    top: '30%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  feedbackText: {
+    fontSize: 50,
+    fontWeight: 'bold',
+    color: COLORS.WHITE,
+    backgroundColor: COLORS.BLACK,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    elevation: 5,
   },
 });
