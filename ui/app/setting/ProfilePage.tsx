@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import BottomTabBar from '@/components/BottomTabBar';
 import COLORS from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +30,7 @@ export default function ProfilePage() {
 
   const fetchProfile = async () => {
     try {
-      const response = await api.get('/user/profile'); // 실제 API 경로로 수정 필요
+      const response = await api.get('/user/profile');
       setProfile(response.data.profile);
     } catch (error: any) {
       console.error('Failed to load profile:', error.response?.data || error.message);
@@ -53,25 +53,27 @@ export default function ProfilePage() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Profile</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.header}>Profile</Text>
 
-      <View style={styles.profileRow}>
-        <Image
-          source={{ uri: profile?.profile_image_url || 'https://via.placeholder.com/100' }}
-          style={styles.avatar}
-        />
-        <Text style={styles.username}>{profile?.nickname || 'Unknown'}</Text>
-      </View>
+        <View style={styles.profileRow}>
+          <Image
+            source={{ uri: profile?.profile_image_url || 'https://via.placeholder.com/100' }}
+            style={styles.avatar}
+          />
+          <Text style={styles.username}>{profile?.nickname || 'Unknown'}</Text>
+        </View>
 
-      <View style={styles.menuWrapper}>
-        <MenuItem icon="create-outline" label="Edit profile" onPress={() => {}} />
-        <MenuItem icon="eye-outline" label="Profile Preview" onPress={() => {}} />
-        <MenuItem icon="settings-outline" label="Settings" onPress={() => router.push('/setting/SettingsPage')} />
-      </View>
+        <View style={styles.menuWrapper}>
+          <MenuItem icon="create-outline" label="Edit profile" onPress={() => {}} />
+          <MenuItem icon="eye-outline" label="Profile Preview" onPress={() => {}} />
+          <MenuItem icon="settings-outline" label="Settings" onPress={() => router.push('/setting/SettingsPage')} />
+        </View>
 
-      <TouchableOpacity onPress={() => setShowLogoutModal(true)}>
-        <Text style={styles.logout}>Logout</Text>
-      </TouchableOpacity>
+        <TouchableOpacity onPress={() => setShowLogoutModal(true)}>
+          <Text style={styles.logout}>Logout</Text>
+        </TouchableOpacity>
+      </ScrollView>
 
       <BottomTabBar />
 
@@ -111,7 +113,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.WHITE,
+  },
+  scrollContent: {
     paddingTop: 60,
+    paddingBottom: 100,
   },
   header: {
     fontSize: 30,
@@ -165,12 +170,12 @@ const styles = StyleSheet.create({
     color: COLORS.BLACK,
     textDecorationLine: 'underline',
     marginHorizontal: 25,
-    marginBottom: 50,
+    marginTop: 20,
   },
   loadingContainer: {
-  flex: 1,
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: COLORS.WHITE,
-},
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.WHITE,
+  },
 });
