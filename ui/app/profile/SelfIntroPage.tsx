@@ -15,7 +15,7 @@ const SelfIntroPage = () => {
     const handleComplete = async () => {
     const trimmed = selfIntro.trim();
     if (!trimmed) {
-        Alert.alert('입력 오류', '자기소개를 입력해주세요.');
+        Alert.alert('Error', 'Enter self-introduction');
         return;
     }
     useProfileStore.getState().setProfile({ introduce: trimmed });
