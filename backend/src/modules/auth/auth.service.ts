@@ -92,21 +92,12 @@ export class AuthService {
    * @returns Object with boolean flags indicating whether each type of data exists
    */
   async checkUserDataStatus(userId: number): Promise<{ hasProfile: boolean, hasPersonality: boolean, hasLoveLanguage: boolean }> {
-    // Check if user has profile data
-    const profile = await this.prisma.userProfile.findUnique({
-      where: { user_id: userId },
-    });
-
-    // Check if user has personality data
-    const personality = await this.prisma.userPersonality.findUnique({
-      where: { user_id: userId },
-    });
-
-    // Check if user has love language data
-    const loveLanguage = await this.prisma.userLoveLanguage.findUnique({
-      where: { user_id: userId },
-    });
-
+    // Execute all findUnique calls in parallel
+    const [profile, personality, loveLanguage] = await Promise.all([
+      this.prisma.userProfile.findUnique({ where: { user_id: userId } }),
+      this.prisma.userPersonality.findUnique({ where: { user_id: userId } }),
+      this.prisma.userLoveLanguage.findUnique({ where: { user_id: userId } }),
+    ]);
     return {
       hasProfile: !!profile,
       hasPersonality: !!personality,
