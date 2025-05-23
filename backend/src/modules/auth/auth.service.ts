@@ -47,10 +47,10 @@ export class AuthService {
       `session:${sessionId}`,
       JSON.stringify({ id: createdUser.id, email: dto.email }),
     );
-    return { sessionId };
+    return { sessionId, userId: createdUser.id };
   }
 
-  async login(email: string, password: string): Promise<{ sessionId: string }> {
+  async login(email: string, password: string): Promise<{ sessionId: string, userId: number }> {
     const user = await this.prisma.user.findUnique({
       where: { email },
     });
@@ -67,7 +67,7 @@ export class AuthService {
       `session:${sessionId}`,
       JSON.stringify({ id: user.id, email: user.email }),
     );
-    return { sessionId };
+    return { sessionId, userId: user.id };
   }
 
   async logout(sessionId: string): Promise<void> {
@@ -83,5 +83,34 @@ export class AuthService {
 
     // Session exists, proceed with logout
     await this.redis.del(sessionKey);
+  }
+
+  /**
+   * Check if a user has profile, personality, and love language data
+   * 
+   * @param userId - The ID of the user to check
+   * @returns Object with boolean flags indicating whether each type of data exists
+   */
+  async checkUserDataStatus(userId: number): Promise<{ hasProfile: boolean, hasPersonality: boolean, hasLoveLanguage: boolean }> {
+    // Check if user has profile data
+    const profile = await this.prisma.userProfile.findUnique({
+      where: { user_id: userId },
+    });
+
+    // Check if user has personality data
+    const personality = await this.prisma.userPersonality.findUnique({
+      where: { user_id: userId },
+    });
+
+    // Check if user has love language data
+    const loveLanguage = await this.prisma.userLoveLanguage.findUnique({
+      where: { user_id: userId },
+    });
+
+    return {
+      hasProfile: !!profile,
+      hasPersonality: !!personality,
+      hasLoveLanguage: !!loveLanguage,
+    };
   }
 }
