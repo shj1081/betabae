@@ -12,6 +12,9 @@ import {
   BetaBaeUpdateRequestDto,
 } from 'src/modules/llm/dto/betabae-clone.dto';
 import { LLMModel } from 'src/modules/llm/enums/llm.enums';
+import { ClaudeProvider } from 'src/modules/llm/providers/claude.provider';
+import { DeepSeekProvider } from 'src/modules/llm/providers/deepseek.provider';
+import { GeminiProvider } from 'src/modules/llm/providers/gemini.provider';
 import {
   LLMMessageContext,
   LLMProviderBaseService,
@@ -37,12 +40,23 @@ export class LlmCloneService {
   constructor(
     private prisma: PrismaService,
     private readonly openAIProvider: OpenAIProvider,
+    private readonly claudeProvider: ClaudeProvider,
+    private readonly geminiProvider: GeminiProvider,
+    private readonly deepSeekProvider: DeepSeekProvider,
   ) {
     switch (CHOSEN_LLM_MODEL) {
       case LLMModel.OPEN_AI:
         this.llmProvider = this.openAIProvider;
         break;
-      // todo: Add other LLM providers here
+      case LLMModel.CLAUDE:
+        this.llmProvider = this.claudeProvider;
+        break;
+      case LLMModel.GEMINI:
+        this.llmProvider = this.geminiProvider;
+        break;
+      case LLMModel.DEEPSEEK:
+        this.llmProvider = this.deepSeekProvider;
+        break;
     }
   }
 

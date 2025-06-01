@@ -1,3 +1,3 @@
 import { LLMModel } from 'src/modules/llm/enums/llm.enums';
 
-export const CHOSEN_LLM_MODEL = LLMModel.OPEN_AI;
+export const CHOSEN_LLM_MODEL: LLMModel = LLMModel.GEMINI;
