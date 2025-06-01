@@ -79,11 +79,11 @@ export default function PersonalityResultPage() {
             </>
           )}
 
-          <View style={styles.buttonWrapper}>
-            <CompleteButton title="Next" onPress={() => router.push('/profile/LoveLanguagePage')} />
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <View style={styles.buttonWrapper}>
+        <CompleteButton title="Next" onPress={() => router.push('/profile/LoveLanguagePage')} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -103,11 +103,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     marginHorizontal: 22,
-    marginVertical: 20,
+    marginBottom: 80,
     color: COLORS.BLACK,
   },
   buttonWrapper: {
-    marginTop: 30,
-    marginHorizontal: 10,
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+    backgroundColor: COLORS.WHITE,
   },
 });
