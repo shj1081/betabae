@@ -104,11 +104,10 @@ export default function LoveLanguagePage() {
             );
           })}
         </ScrollView>
-
-        <View style={styles.buttonWrapper}>
-          <CompleteButton title="Next" onPress={handleSubmit} />
-        </View>
       </KeyboardAvoidingView>
+      <View style={styles.buttonWrapper}>
+        <CompleteButton title="Next" onPress={handleSubmit} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -143,7 +142,7 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: COLORS.LIGHT_GRAY,
     marginHorizontal: 20,
-    marginBottom: 30,
+    marginBottom: 50,
   },
   languageButton: {
     flexDirection: 'row',

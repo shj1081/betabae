@@ -13,12 +13,13 @@ export default function LoginPage() {
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupTitle, setPopupTitle] = useState('');
   const [popupMessage, setPopupMessage] = useState('');
+  const [loginResult, setLoginResult] = useState<any>(null);
   const router = useRouter();
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       setPopupTitle('Error');
-      setPopupMessage('Please fill in both email and password.');
+      setPopupMessage('Please enter email and password.');
       setPopupVisible(true);
       return;
     }
@@ -28,6 +29,8 @@ export default function LoginPage() {
         email,
         password,
       });
+
+      setLoginResult(response.data);
       setPopupTitle('Login Successful');
       setPopupMessage('You have logged in successfully!');
       setPopupVisible(true);
@@ -83,6 +86,7 @@ export default function LoginPage() {
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+
       <View style={styles.buttonWrapper}>
         <CompleteButton title="Login" onPress={handleLogin} />
       </View>
@@ -95,7 +99,12 @@ export default function LoginPage() {
         onConfirm={() => {
           setPopupVisible(false);
           if (popupTitle === 'Login Successful') {
-            router.push('/match/MatchingPage'); 
+            const { hasProfile, hasLoveLanguage, hasPersonality } = loginResult || {};
+            if (!hasProfile || !hasLoveLanguage || !hasPersonality) {
+              router.push('/auth/WelcomePage');
+            } else {
+              router.push('/match/MatchingPage');
+            }
           }
         }}
       />

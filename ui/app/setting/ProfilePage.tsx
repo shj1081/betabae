@@ -65,7 +65,7 @@ export default function ProfilePage() {
         </View>
 
         <View style={styles.menuWrapper}>
-          <MenuItem icon="create-outline" label="Edit profile" onPress={() => {}} />
+          <MenuItem icon="create-outline" label="Edit profile" onPress={() => router.push('/profile/SignupBasicPage')} />
           <MenuItem icon="eye-outline" label="Profile Preview" onPress={() => {}} />
           <MenuItem icon="settings-outline" label="Settings" onPress={() => router.push('/setting/SettingsPage')} />
         </View>
@@ -123,12 +123,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginHorizontal: 22,
     color: COLORS.BLACK,
-    marginBottom: 50,
+    marginBottom: 60,
   },
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 100,
     marginHorizontal: 22,
   },
   avatar: {
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     marginRight: 40,
   },
   username: {
-    fontSize: 30,
+    fontSize: 35,
     fontWeight: '400',
     color: COLORS.BLACK,
   },
@@ -167,6 +167,7 @@ const styles = StyleSheet.create({
   },
   logout: {
     fontSize: 16,
+    fontWeight: '400',
     color: COLORS.BLACK,
     textDecorationLine: 'underline',
     marginHorizontal: 25,

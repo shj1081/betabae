@@ -69,10 +69,10 @@ export default function PersonalityPage() {
           onChange={setQ5}
         />
 
-        <View style={styles.buttonWrapper}>
-          <CompleteButton title="Next" onPress={handleNext} />
-        </View>
       </ScrollView>
+      <View style={styles.buttonWrapper}>
+        <CompleteButton title="Next" onPress={handleNext} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -100,7 +100,8 @@ const styles = StyleSheet.create({
     color: COLORS.BLACK,
   },
   buttonWrapper: {
-    marginHorizontal: 10,
-    marginTop: 20,
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+    backgroundColor: COLORS.WHITE,
   },
 });

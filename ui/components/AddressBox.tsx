@@ -20,7 +20,6 @@ const AddressBox = ({ province, city, setProvince, setCity }: Props) => {
     ? addressData[selectedRegion][province] || []
     : [];
 
-  // 사용자가 province를 외부에서 세팅한 경우에 region 자동 선택
   useEffect(() => {
     if (!selectedRegion && province) {
       const matchingRegion = regions.find((region) =>
@@ -37,7 +36,6 @@ const AddressBox = ({ province, city, setProvince, setCity }: Props) => {
       <Text style={styles.label}>Address</Text>
 
       <View style={styles.pickerContainer}>
-        {/* 1단계: 권역 (선택 활성화) */}
         <Picker
           selectedValue={selectedRegion}
           onValueChange={(itemValue) => {
@@ -47,13 +45,12 @@ const AddressBox = ({ province, city, setProvince, setCity }: Props) => {
           }}
           style={styles.picker}
         >
-          <Picker.Item label="권역 선택" value="" />
+          <Picker.Item label="Region" value="" />
           {regions.map((region) => (
             <Picker.Item key={region} label={region} value={region} />
           ))}
         </Picker>
 
-        {/* 2단계: 시/도 */}
         <Picker
           selectedValue={province}
           onValueChange={(itemValue) => {
@@ -63,20 +60,19 @@ const AddressBox = ({ province, city, setProvince, setCity }: Props) => {
           style={styles.picker}
           enabled={!!selectedRegion}
         >
-          <Picker.Item label="시/도 선택" value="" />
+          <Picker.Item label="province" value="" />
           {cities.map((cityOption) => (
             <Picker.Item key={cityOption} label={cityOption} value={cityOption} />
           ))}
         </Picker>
 
-        {/* 3단계: 시/군/구 */}
         <Picker
           selectedValue={city}
           onValueChange={setCity}
           style={styles.picker}
           enabled={!!province}
         >
-          <Picker.Item label="시/군/구 선택" value="" />
+          <Picker.Item label="city" value="" />
           {districts.map((district) => (
             <Picker.Item key={district} label={district} value={district} />
           ))}

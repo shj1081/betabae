@@ -40,7 +40,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginHorizontal: 20,
-    marginVertical: 20,
+    marginTop: 20,
+    marginBottom: 40,
   },
   tab: {
     paddingHorizontal: 20,

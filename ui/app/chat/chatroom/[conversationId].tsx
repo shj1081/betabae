@@ -8,17 +8,20 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
+import { Svg, Path } from 'react-native-svg';
 import { useLocalSearchParams } from 'expo-router';
 import BackButton from '@/components/BackButton';
 import COLORS from '@/constants/colors';
 import { connectSocket } from '@/lib/socket';
 import api from '@/lib/api';
+import * as ImagePicker from 'expo-image-picker';
 
 interface Message {
   messageId: number;
   messageText: string;
-  sender: { name: string };
+  sender: { id: number; name: string };
   sentAt: string;
 }
 
@@ -29,6 +32,8 @@ export default function ChatRoomPage() {
   const scrollRef = useRef<ScrollView>(null);
   const [partnerName, setPartnerName] = useState('');
   const [myName, setMyName] = useState('');
+  const [userId, setUserId] = useState<number | null>(null);
+  const [userProfiles, setUserProfiles] = useState<Record<number, { nickname: string; profileImageUrl: string }>>({});
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -38,11 +43,13 @@ export default function ChatRoomPage() {
         setMyName(meName || '');
 
         const sortedMessages = res.data.messages.sort(
-          (a: Message, b: Message) =>
-            new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
+          (a: Message, b: Message) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
         );
 
         setMessages(sortedMessages);
+
+        const senderIds = [...new Set(sortedMessages.map((m: Message) => m.sender.id))];
+        senderIds.forEach(fetchUserProfile);
 
         const other = sortedMessages.find((msg) => msg.sender.name !== meName);
         if (other) setPartnerName(other.sender.name);
@@ -57,12 +64,9 @@ export default function ChatRoomPage() {
     socket.emit('enter', { cid: Number(conversationId) });
 
     socket.on('newMessage', (msg: Message) => {
-
       const exists = messages.find((m) => m.messageId === msg.messageId);
       if (exists) return;
-
       if (msg.sender.name === myName) return;
-
       setMessages((prev) => [...prev, msg]);
     });
 
@@ -72,6 +76,36 @@ export default function ChatRoomPage() {
     };
   }, [conversationId, myName, messages]);
 
+  const fetchUserProfile = async (userId: number) => {
+    if (userId === 0) return; // Skip betabae for API call
+    if (userProfiles[userId]) return;
+    try {
+      const res = await api.get(`/user/info/${userId}`);
+      const profile = res.data.profile;
+      setUserProfiles((prev) => ({
+        ...prev,
+        [userId]: {
+          nickname: res.data.nickname,
+          profileImageUrl: profile?.profile_image_url || '',
+        },
+      }));
+    } catch (err) {
+      console.error(`❌ Failed to load profile for user ${userId}`, err);
+    }
+  };
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await api.get('/user/profile');
+        setUserId(res.data.user?.id);
+      } catch (err) {
+        console.error('❌ 유저 정보 불러오기 실패:', err);
+      }
+    };
+    fetchUser();
+  }, []);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -79,7 +113,7 @@ export default function ChatRoomPage() {
   const scrollToBottom = () => {
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    }, 500);
   };
 
   const sendText = () => {
@@ -88,7 +122,7 @@ export default function ChatRoomPage() {
     const newMessage: Message = {
       messageId: Date.now(),
       messageText: text,
-      sender: { name: myName },
+      sender: { id: userId || -1, name: myName },
       sentAt: new Date().toISOString(),
     };
 
@@ -99,8 +133,56 @@ export default function ChatRoomPage() {
       cid: Number(conversationId),
       text,
     });
-
     setText('');
+  };
+
+  const sendImage = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        alert('사진 접근 권한이 필요합니다.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      const image = result.assets[0];
+      const uri = image.uri;
+      const fileName = uri.split('/').pop()!;
+      const match = /\.(\w+)$/.exec(fileName);
+      const fileExt = match?.[1]?.toLowerCase();
+      const mimeType = fileExt === 'jpg' ? 'image/jpeg'
+                      : fileExt === 'jpeg' ? 'image/jpeg'
+                      : fileExt === 'png' ? 'image/png'
+                      : fileExt === 'heic' ? 'image/heic'
+                      : 'image/*';
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri,
+        name: fileName,
+        type: mimeType,
+      } as any);
+      formData.append('messageText', '');
+
+      await api.post(
+        `/chat/conversations/${conversationId}/messages/image`,
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        }
+      );
+
+      console.log('✅ 이미지 전송 완료');
+    } catch (err: any) {
+      console.error('❌ 이미지 전송 실패:', err.response?.data || err.message);
+    }
   };
 
   return (
@@ -109,47 +191,78 @@ export default function ChatRoomPage() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
-      <View style={styles.header}>
-        <BackButton />
-        <Text style={styles.title}>{partnerName || 'Chat'}</Text>
-      </View>
-
+      <BackButton />
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.messageList}
         onContentSizeChange={scrollToBottom}
       >
         {messages.map((msg) => {
-          const isMine = msg.sender.name === myName;
+          const isMine = msg.sender?.id === userId;
+          const profile = userProfiles[msg.sender.id];
           return (
             <View
               key={msg.messageId}
               style={[styles.messageRow, isMine ? styles.myMessage : styles.theirMessage]}
             >
-              {!isMine && <Text style={styles.nickname}>{msg.sender.name}</Text>}
-              <View style={styles.bubble}>
-                <Text style={styles.messageText}>{msg.messageText}</Text>
+              {!isMine && (
+                <View style={styles.profileSection}>
+                  <Image
+                    source={
+                      msg.sender.id === 0
+                        ? require('@/assets/images/beta.png')
+                        : profile?.profileImageUrl
+                        ? { uri: profile.profileImageUrl }
+                        : require('@/assets/images/example.jpg')
+                    }
+                    style={styles.avatar}
+                  />
+                </View>
+              )}
+              <View>
+                {!isMine && (
+                  <Text style={styles.nickname}>{profile?.nickname || msg.sender.name}</Text>
+                )}
+                <View style={styles.bubble}>
+                  <Text style={styles.messageText}>{msg.messageText}</Text>
+                </View>
+                <Text style={styles.time}>
+                  {new Date(msg.sentAt).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true,
+                  })}
+                </Text>
               </View>
-              <Text style={styles.time}>
-                {new Date(msg.sentAt).toLocaleTimeString('ko-KR', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </Text>
             </View>
           );
         })}
       </ScrollView>
 
       <View style={styles.inputRow}>
+        <TouchableOpacity style={styles.iconButton} onPress={sendImage}>
+          <Svg width={24} height={24} viewBox="0 -960 960 960" fill="#696969">
+            <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Z" />
+          </Svg>
+        </TouchableOpacity>
+
         <TextInput
           style={styles.input}
           placeholder="Type a message..."
           value={text}
           onChangeText={setText}
         />
-        <TouchableOpacity style={styles.sendButton} onPress={sendText}>
-          <Text style={styles.sendText}>send</Text>
+
+        <TouchableOpacity style={[styles.iconButton, styles.sendButton]} onPress={sendText}>
+          <Svg width={24} height={24} viewBox="0 -960 960 960" fill="#fff">
+            <Path d="M440-160v-487L216-423l-56-57 320-320 320 320-56 57-224-224v487h-80Z" />
+          </Svg>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.iconButton} onPress={() => console.log('분석')}>
+          <Svg width={24} height={24} viewBox="0 -960 960 960" fill="#C13448">
+            <Path d="M360-160q-19 0-34-11t-22-28l-92-241H40v-80h228l92 244 184-485q7-17 22-28t34-11q19 0 34 11t22 28l92 241h172v80H692l-92-244-184 485q-7 17-22 28t-34 11Z" />
+          </Svg>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -158,33 +271,16 @@ export default function ChatRoomPage() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.WHITE },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 40,
-    paddingHorizontal: 20,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 10,
-    color: COLORS.BLACK,
-  },
-  messageList: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  messageRow: {
-    marginVertical: 10,
-    maxWidth: '75%',
-  },
-  myMessage: {
-    alignSelf: 'flex-end',
-    alignItems: 'flex-end',
-  },
-  theirMessage: {
-    alignSelf: 'flex-start',
-    alignItems: 'flex-start',
+  messageList: { paddingHorizontal: 20, paddingBottom: 20 },
+  messageRow: { marginVertical: 10, maxWidth: '75%', flexDirection: 'row' },
+  myMessage: { alignSelf: 'flex-end', justifyContent: 'flex-end' },
+  theirMessage: { alignSelf: 'flex-start' },
+  profileSection: { marginRight: 8 },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.GRAY,
   },
   nickname: {
     fontSize: 12,
@@ -210,9 +306,12 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderTopWidth: 1,
     borderColor: '#ddd',
+    backgroundColor: '#fff',
+    gap: 6,
   },
   input: {
     flex: 1,
@@ -223,8 +322,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 15,
   },
-  sendButton: {
-    marginLeft: 10,
+  iconButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -232,9 +330,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  sendText: {
-    fontSize: 14,
-    color: COLORS.BLACK,
-    fontWeight: '500',
+  sendButton: {
+    backgroundColor: COLORS.BLACK,
   },
 });

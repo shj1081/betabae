@@ -50,12 +50,11 @@ export default function MbtiPage() {
           <MbtiSlider labelLeft="Thinking" labelRight="Feeling" value={tf} onChange={setTf} />
           <MbtiSlider labelLeft="Judging" labelRight="Perceiving" value={jp} onChange={setJp} />
 
-          <View style={styles.buttonWrapper}>
-            <CompleteButton title="Next" onPress={handleNext} />
-          </View>
-
         </ScrollView>
       </KeyboardAvoidingView>
+      <View style={styles.buttonWrapper}>
+        <CompleteButton title="Next" onPress={handleNext} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -75,11 +74,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     marginHorizontal: 22,
-    marginBottom: 30,
+    marginBottom: 80,
     color: COLORS.BLACK,
   },
   buttonWrapper: {
-    marginTop: 20,
-    marginHorizontal: 10,
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+    backgroundColor: COLORS.WHITE,
   },
 });

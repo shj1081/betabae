@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
-import RNPickerSelect from 'react-native-picker-select';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import COLORS from '@/constants/colors';
 
 interface Props {
@@ -18,28 +18,48 @@ const BirthdayField = ({ year, month, day, onChange }: Props) => {
   const days = Array.from({ length: getDays(year, month) || 31 }, (_, i) => i + 1);
 
   return (
-    <View style={styles.container}>
-      <RNPickerSelect
-        placeholder={{ label: 'Year', value: 0 }}
-        value={year}
-        onValueChange={(val) => onChange(val, month, day)}
-        items={years.map((y) => ({ label: `${y}`, value: y }))}
-        style={pickerSelectStyles}
-      />
-      <RNPickerSelect
-        placeholder={{ label: 'Month', value: 0 }}
-        value={month}
-        onValueChange={(val) => onChange(year, val, day)}
-        items={months.map((m) => ({ label: `${m}`, value: m }))}
-        style={pickerSelectStyles}
-      />
-      <RNPickerSelect
-        placeholder={{ label: 'Day', value: 0 }}
-        value={day}
-        onValueChange={(val) => onChange(year, month, val)}
-        items={days.map((d) => ({ label: `${d}`, value: d }))}
-        style={pickerSelectStyles}
-      />
+    <View style={styles.wrapper}>
+      <Text style={styles.label}>Birthday</Text>
+      <View style={styles.row}>
+        <View style={styles.column}>
+          <Picker
+            selectedValue={year}
+            onValueChange={(val) => onChange(val, month, day)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Year" value={0} />
+            {years.map((y) => (
+              <Picker.Item key={y} label={`${y}`} value={y} />
+            ))}
+          </Picker>
+        </View>
+
+        <View style={styles.column}>
+          <Picker
+            selectedValue={month}
+            onValueChange={(val) => onChange(year, val, day)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Month" value={0} />
+            {months.map((m) => (
+              <Picker.Item key={m} label={`${m}`} value={m} />
+            ))}
+          </Picker>
+        </View>
+
+        <View style={styles.column}>
+          <Picker
+            selectedValue={day}
+            onValueChange={(val) => onChange(year, month, val)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Day" value={0} />
+            {days.map((d) => (
+              <Picker.Item key={d} label={`${d}`} value={d} />
+            ))}
+          </Picker>
+        </View>
+      </View>
     </View>
   );
 };
@@ -47,37 +67,30 @@ const BirthdayField = ({ year, month, day, onChange }: Props) => {
 export default BirthdayField;
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  wrapper: {
     marginBottom: 30,
-    marginHorizontal: 10,
+    marginHorizontal: 22,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 10,
+    color: COLORS.BLACK,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  column: {
+    flex: 1,
+    marginRight: 8,
+  },
+  picker: {
+    borderWidth: 2,
+    borderColor: COLORS.BLACK,
+    borderRadius: 10,
+    paddingVertical: 12,
+    backgroundColor: COLORS.WHITE,
+    color: COLORS.BLACK,
   },
 });
-
-const pickerSelectStyles = {
-  inputIOS: {
-    flex: 1,
-    fontSize: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    marginHorizontal: 4,
-    borderWidth: 1,
-    borderColor: COLORS.DARK_GRAY,
-    borderRadius: 10,
-    backgroundColor: COLORS.WHITE,
-    color: COLORS.BLACK,
-  },
-  inputAndroid: {
-    flex: 1,
-    fontSize: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    marginHorizontal: 4,
-    borderWidth: 1,
-    borderColor: COLORS.DARK_GRAY,
-    borderRadius: 10,
-    backgroundColor: COLORS.WHITE,
-    color: COLORS.BLACK,
-  },
-};

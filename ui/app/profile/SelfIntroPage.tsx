@@ -6,13 +6,12 @@ import CompleteButton from '@/components/CompleteButton';
 import COLORS from '@/constants/colors';
 import { useRouter } from 'expo-router';
 import { useProfileStore } from '@/store/useProfileStore';
-import api from '@/lib/api';
 
 const SelfIntroPage = () => {
   const router = useRouter();
   const [selfIntro, setSelfIntro] = useState('');
 
-    const handleComplete = async () => {
+  const handleNext = async () => {
     const trimmed = selfIntro.trim();
     if (!trimmed) {
         Alert.alert('Error', 'Enter self-introduction');
@@ -32,11 +31,10 @@ const SelfIntroPage = () => {
           value={selfIntro}
           onChangeText={setSelfIntro}
         />
-        <CompleteButton
-          title="Next"
-          onPress={handleComplete}
-        />
       </ScrollView>
+      <View style={styles.buttonWrapper}>
+        <CompleteButton title="Next" onPress={handleNext} />
+      </View>
     </SafeAreaView>
   );
 };
@@ -55,7 +53,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     marginHorizontal: 22,
-    marginBottom: 40,
+    marginBottom: 80,
     color: COLORS.BLACK,
+  },
+  buttonWrapper: {
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+    backgroundColor: COLORS.WHITE,
   },
 });

@@ -103,14 +103,14 @@ export default function PhotoRegisterPage() {
 
         <PhotoUploader onPhotosChange={setPhotos} />
 
-        <View style={styles.buttonWrapper}>
-          <CompleteButton
-            title={uploading ? 'Uploading...' : 'Next'}
-            onPress={handleNext}
-            disabled={uploading}
-          />
-        </View>
       </ScrollView>
+      <View style={styles.buttonWrapper}>
+        <CompleteButton
+          title={uploading ? 'Uploading...' : 'Next'}
+          onPress={handleNext}
+          disabled={uploading}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -127,11 +127,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     marginHorizontal: 22,
-    marginBottom: 40,
+    marginBottom: 80,
     color: COLORS.BLACK,
   },
   buttonWrapper: {
-    marginHorizontal: 10,
-    marginTop: 30,
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+    backgroundColor: COLORS.WHITE,
   },
 });
