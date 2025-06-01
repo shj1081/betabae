@@ -19,19 +19,21 @@ interface ChatPartner {
   conversationId: string;
   type: 'BETA_BAE' | 'REAL_BAE';
   chatPartner: {
+    id: number; 
     nickname: string;
     profileImageUrl?: string;
   };
   unreadCount: number;
   lastMessage?: {
     messageText: string;
+    sentAt?: string;
   };
-  lastMessageTime?: string;
 }
 
 export default function ChatPage() {
   const [tab, setTab] = useState('All');
   const [conversations, setConversations] = useState<ChatPartner[]>([]);
+  const [userProfiles, setUserProfiles] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -41,8 +43,21 @@ export default function ChatPage() {
     const fetchConversations = async () => {
       try {
         const res = await api.get('/chat/conversations');
-        console.log('📦 conversations:', res.data.conversations);
-        setConversations(res.data.conversations);
+        const convs: ChatPartner[] = res.data.conversations;
+
+        for (const conv of convs) {
+          if (conv.chatPartner?.id && conv.chatPartner.id !== 0) {
+            fetchUserProfile(conv.chatPartner.id);
+          }
+        }
+
+        const sorted = convs.sort((a, b) => {
+          const aTime = new Date(a.lastMessage?.sentAt || 0).getTime();
+          const bTime = new Date(b.lastMessage?.sentAt || 0).getTime();
+          return bTime - aTime;
+        });
+
+        setConversations(sorted);
       } catch (err) {
         console.error('❌ 채팅 목록 불러오기 실패:', err);
       } finally {
@@ -62,12 +77,38 @@ export default function ChatPage() {
     };
   }, []);
 
+  const fetchUserProfile = async (userId: number) => {
+    if (userProfiles[userId]) return;
+    try {
+      const res = await api.get(`/user/info/${userId}`);
+      const imageUrl = res.data.profile?.profile_image_url || '';
+      setUserProfiles((prev) => ({ ...prev, [userId]: imageUrl }));
+    } catch (err) {
+      console.error(`❌ 사용자 ${userId} 프로필 이미지 불러오기 실패`, err);
+    }
+  };
+
   const filtered = conversations.filter((conv) => {
     if (tab === 'All') return true;
     if (tab === 'BetaBae') return conv.type === 'BETA_BAE';
     if (tab === 'RealBae') return conv.type === 'REAL_BAE';
     return true;
   });
+
+  const formatTime = (iso?: string) => {
+    if (!iso) return '';
+    const date = new Date(iso);
+
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    const hours = date.getHours();
+    const minutes = `${date.getMinutes()}`.padStart(2, '0');
+    const ampm = hours < 12 ? 'AM' : 'PM';
+    const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+
+    return `${year}-${month}-${day} ${ampm} ${hour12}:${minutes}`;
+  };
 
   return (
     <View style={styles.container}>
@@ -88,12 +129,12 @@ export default function ChatPage() {
                   source={
                     conv.type === 'BETA_BAE'
                       ? require('@/assets/images/beta.png')
-                      : conv.chatPartner.profileImageUrl && typeof conv.chatPartner.profileImageUrl === 'string'
-                      ? { uri: conv.chatPartner.profileImageUrl }
+                      : userProfiles[conv.chatPartner.id]
+                      ? { uri: userProfiles[conv.chatPartner.id] }
                       : require('@/assets/images/example.jpg')
                   }
                   style={styles.avatar}
-                  onError={() => console.warn('이미지 로드 실패:', conv.chatPartner.profileImageUrl)}
+                  onError={() => console.warn('이미지 로드 실패:', conv.chatPartner.id)}
                 />
                 <View>
                   <Text style={styles.nickname}>{conv.chatPartner.nickname || '이름 없음'}</Text>
@@ -104,7 +145,7 @@ export default function ChatPage() {
               </View>
 
               <View style={styles.rightColumn}>
-                <Text style={styles.time}>{conv.lastMessageTime || 'PM 3:30'}</Text>
+                <Text style={styles.time}>{formatTime(conv.lastMessage?.sentAt)}</Text>
                 {conv.unreadCount > 0 && (
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>{conv.unreadCount}</Text>
@@ -115,7 +156,6 @@ export default function ChatPage() {
           ))}
         </ScrollView>
       )}
-
       <BottomTabBar />
     </View>
   );
