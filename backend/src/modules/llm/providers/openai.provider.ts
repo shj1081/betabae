@@ -37,6 +37,15 @@ export class OpenAIProvider extends LLMProviderBaseService {
       return message.trim();
     } catch (error) {
       console.error('OpenAI API error:', error);
+
+      if (
+        error?.status === 429 &&
+        (error?.code === 'insufficient_quota' || error?.error?.code === 'insufficient_quota')
+      ) {
+        throw new InternalServerErrorException(
+          'You have exceeded your OpenAI quota. Please check your billing settings or try again later.',
+        );
+      }
       throw new InternalServerErrorException('Failed to get response from OpenAI');
     }
   }

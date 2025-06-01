@@ -162,7 +162,7 @@ model BetaBaePrompt {
 model BetaBaeClone {
   id           Int    @id @default(autoincrement())
   user_id      Int    @unique
-  user_context String
+  user_context String @db.LongText
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
