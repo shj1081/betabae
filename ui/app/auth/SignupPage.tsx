@@ -24,29 +24,31 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
 
   const validate = () => {
-    if (!name || !email || !password || !confirmPassword) {
-      setError('Fill in every areas.');
-      return false;
-    }
+    let isValid = true;
+    setErrors((prev) => ({ ...prev, password: '', confirmPassword: '' })); 
+
+    const newErrors = { password: '', confirmPassword: '' };
 
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@#$%^&*!()\-+=.\/])[A-Za-z\d@#$%^&*!()\-+=.\/]{8,}$/;
     if (!passwordRegex.test(password)) {
-      setError(
-        'Passwords must contain at least one alpha one numeric and one ( @#$^&*()-+=./ ) character.'
-      );
-      return false;
+      newErrors.password = 'Password must include letters, numbers, and symbols.';
+      isValid = false;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return false;
+      newErrors.confirmPassword = 'Passwords do not match.';
+      isValid = false;
     }
 
-    setError('');
-    return true;
+    setErrors((prev) => ({ ...prev, ...newErrors }));
+    return isValid;
   };
 
   const handleNext = async () => {
@@ -63,12 +65,11 @@ export default function SignupPage() {
 
         router.push('/auth/WelcomePage');
     } catch (error: any) {
-        console.error('❌ register fail:', error.response?.data || error.message);
-        if (error.response?.data?.message?.includes('email')) {
-        setError('already exists');
-        } else {
-        Alert.alert('error', 'register error');
-        }
+      if (error.response?.data?.message?.includes('Email')) {
+        setErrors((prev) => ({ ...prev, email: 'This email is already in use.' }));
+      } else {
+        Alert.alert('Error', 'Registration failed.');
+      }
     }
     };
 
@@ -98,6 +99,7 @@ export default function SignupPage() {
             keyboardType="email-address"
             autoCapitalize="none"
           />
+          {errors.email ? <Text style={styles.error}>{errors.email}</Text> : null}
 
           <InputField
             label="Password"
@@ -106,6 +108,7 @@ export default function SignupPage() {
             value={password}
             onChangeText={setPassword}
           />
+          {errors.password ? <Text style={styles.error}>{errors.password}</Text> : null}
 
           <InputField
             label="Confirm Password"
@@ -114,14 +117,13 @@ export default function SignupPage() {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
           />
+          {errors.confirmPassword ? <Text style={styles.error}>{errors.confirmPassword}</Text> : null}
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <View style={styles.buttonWrapper}>
-            <CompleteButton title="Complete" onPress={handleNext} />
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <View style={styles.buttonWrapper}>
+        <CompleteButton title="Complete" onPress={handleNext} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -141,7 +143,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     marginHorizontal: 22,
-    marginBottom: 40,
+    marginBottom: 80,
     color: COLORS.BLACK,
   },
   error: {
@@ -151,7 +153,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   buttonWrapper: {
-    marginHorizontal: 10,
-    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+    backgroundColor: COLORS.WHITE,
   },
 });
