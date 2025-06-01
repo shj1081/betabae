@@ -97,12 +97,11 @@ export default function BasicInfoPage() {
               'No smoking',
             ]}
           />
-
-          <View style={styles.buttonWrapper}>
-            <CompleteButton title="Next" onPress={handleNext} />
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <View style={styles.buttonWrapper}>
+        <CompleteButton title="Next" onPress={handleNext} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -122,7 +121,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     marginHorizontal: 22,
-    marginBottom: 40,
+    marginBottom: 80,
     color: COLORS.BLACK,
   },
   heightRow: {
@@ -140,6 +139,8 @@ const styles = StyleSheet.create({
     marginRight: 22,
   },
   buttonWrapper: {
-    marginHorizontal: 10,
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+    backgroundColor: COLORS.WHITE,
   },
 });
