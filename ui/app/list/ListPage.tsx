@@ -1,104 +1,157 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
-import TalkButton from '@/components/TalkButton';
-import COLORS from '@/constants/colors';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  Image,
+  Alert,
+} from 'react-native';
 import BottomTabBar from '@/components/BottomTabBar';
+import COLORS from '@/constants/colors';
 import api from '@/lib/api';
+import ListFilterTab from '@/components/ListFilterTab';
+import TalkButton from '@/components/TalkButton'; 
 
 interface MatchItem {
   id: number;
   requester: {
     id: number;
     legal_name: string;
-    profile: {
-      nickname: string;
-    };
+    nickname: string;
   };
   requested: {
     id: number;
     legal_name: string;
-    profile: {
-      nickname: string;
-    };
+    nickname: string;
   };
-  status: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
 }
 
-interface UserItem {
-  matchId: number;
+interface UserProfile {
+  id: number;
   nickname: string;
-  avatar: any;
+  profileImageUrl: string;
 }
 
 export default function ListPage() {
-  const [matchList, setMatchList] = useState<UserItem[]>([]);
+  const [matches, setMatches] = useState<MatchItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<number | null>(null);
+  const [selectedTab, setSelectedTab] = useState<'liked' | 'likedMe'>('liked');
+  const [userProfiles, setUserProfiles] = useState<{ [key: number]: UserProfile }>({});
 
   useEffect(() => {
-    const fetchMatches = async () => {
+    const fetchUserAndMatches = async () => {
       try {
-        const profileRes = await api.get('/user/profile');
-        const myId = profileRes.data.profile.id;
+        const userRes = await api.get('/user/profile');
+        const id = userRes.data.user?.id;
+        setUserId(id);
 
-        const res = await api.get('/match');
-        const acceptedMatches: MatchItem[] = res.data.matches.filter(
-          (match: MatchItem) => match.status === 'ACCEPTED'
-        );
-
-        const userItems: UserItem[] = acceptedMatches.map((match) => {
-        const isRequester = match.requester.id === myId ? match.requested.id : match.requester.id;
-        const otherUser = isRequester ? match.requested : match.requester;
-
-        return {
-          matchId: match.id,
-          nickname: otherUser?.profile?.nickname || otherUser.legal_name,
-          avatar: require('@/assets/images/black.png'),
-        };
-      });
-
-        setMatchList(userItems);
-      } catch (error) {
-        console.error('❌ 매칭 목록 불러오기 실패:', error);
+        const matchRes = await api.get('/match');
+        setMatches(matchRes.data.matches);
+      } catch (err) {
+        console.error('❌ 매칭 정보 불러오기 실패:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchMatches();
+    fetchUserAndMatches();
   }, []);
 
-  const handleConsent = async (matchId: number) => {
+  const fetchUserProfile = async (userId: number) => {
+    if (userProfiles[userId]) return;
+
     try {
-      await api.post(`/match/${matchId}/real-bae/accept`, {
-        consent: true,
-      });
-      Alert.alert('✅ Success', 'You have consented to the RealBae chat.');
-    } catch (error: any) {
-      console.error('❌ Consent failed:', error);
-      Alert.alert('❌ Error', error.response?.data?.message || 'Something went wrong.');
+      const res = await api.get(`/user/info/${userId}`);
+      const profile = res.data.profile;
+      setUserProfiles((prev) => ({
+        ...prev,
+        [userId]: {
+          id: userId,
+          nickname: res.data.nickname,
+          profileImageUrl: profile?.profile_image_url || '',
+        },
+      }));
+    } catch (err) {
+      console.error(`❌ Failed to load profile for user ${userId}`, err);
     }
   };
 
-  const renderItem = ({ item }: { item: UserItem }) => (
-    <View style={styles.item}>
-      <Image source={item.avatar} style={styles.avatar} />
-      <Text style={styles.nickname}>{item.nickname}</Text>
-      <TalkButton title="Consent" onPress={() => handleConsent(item.matchId)} />
-    </View>
-  );
+  useEffect(() => {
+    if (userId === null) return;
+
+    const userIds = matches.flatMap((match) => [
+      match.requester.id,
+      match.requested.id,
+    ]);
+    const uniqueIds = Array.from(new Set(userIds));
+    uniqueIds.forEach((id) => fetchUserProfile(id));
+  }, [matches, userId]);
+
+  const handleAcceptRealBae = async (matchId: number) => {
+    try {
+      await api.post(`/match/${matchId}/real-bae/accept`);
+      Alert.alert('Accepted', 'You accepted RealBae chat 💌');
+    } catch (err) {
+      console.error(`❌ Accept error:`, err);
+      Alert.alert('Error', 'Failed to accept RealBae');
+    }
+  };
+
+  const filteredMatches = matches.filter((match) => {
+    if (selectedTab === 'liked' && userId !== null) {
+      return match.requester.id === userId;
+    } else if (selectedTab === 'likedMe' && userId !== null) {
+      return match.requested.id === userId;
+    }
+    return false;
+  });
+
+  const renderItem = ({ item }: { item: MatchItem }) => {
+    const isRequester = selectedTab === 'liked';
+    const targetUser = isRequester ? item.requested : item.requester;
+    const profile = userProfiles[targetUser.id];
+
+    const showTalkButton = item.status === 'ACCEPTED' && userId !== null;
+
+    return (
+      <View style={styles.notificationRow}>
+        <View style={styles.userSection}>
+          {profile?.profileImageUrl ? (
+            <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder} />
+          )}
+          <Text style={styles.message}>{targetUser.nickname}</Text>
+        </View>
+
+        {showTalkButton && (
+          <TalkButton
+            title="Talk with RealBae"
+            onPress={() => handleAcceptRealBae(item.id)}
+            style={{ marginLeft: 'auto' }}
+          />
+        )}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>List</Text>
+      <ListFilterTab selected={selectedTab} onSelect={setSelectedTab} />
       {loading ? (
-        <ActivityIndicator size="large" color={COLORS.BLACK} />
+        <ActivityIndicator size="large" color={COLORS.PRIMARY} style={{ marginTop: 50 }} />
       ) : (
         <FlatList
-          data={matchList}
-          keyExtractor={(item) => String(item.matchId)}
+          data={filteredMatches}
           renderItem={renderItem}
+          keyExtractor={(item) => item.id.toString()}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={styles.list}
         />
       )}
       <BottomTabBar />
@@ -116,26 +169,39 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '600',
     marginHorizontal: 22,
-    marginBottom: 50,
     color: COLORS.BLACK,
   },
-  item: {
+  list: {
+    paddingBottom: 80,
+  },
+  notificationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 22,
-    paddingVertical: 10,
-    justifyContent: 'space-between',
+    paddingVertical: 20,
+  },
+  userSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 100,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 12,
+    backgroundColor: COLORS.LIGHT_GRAY,
   },
-  nickname: {
-    fontSize: 16,
-    fontWeight: '500',
-    flex: 1,
-    marginLeft: 20,
+  avatarPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 12,
+    backgroundColor: COLORS.LIGHT_GRAY,
+  },
+  message: {
+    fontSize: 18,
+    color: COLORS.BLACK,
   },
   separator: {
     height: 1,
