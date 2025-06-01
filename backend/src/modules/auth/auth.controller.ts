@@ -32,7 +32,7 @@ export class AuthController {
     @Body() dto: RegisterRequestDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { sessionId } = await this.authService.registerAndLogin(dto);
+    const { sessionId, userId } = await this.authService.registerAndLogin(dto);
 
     // auto login after register
     res.cookie('session_id', sessionId, {
@@ -42,8 +42,11 @@ export class AuthController {
       path: '/',
     });
 
+    // Check if user has profile, personality, and love language data
+    const { hasProfile, hasPersonality, hasLoveLanguage } = await this.authService.checkUserDataStatus(userId);
+
     // use login response dto bcs auto login after register
-    return new LoginResponseDto(dto.email);
+    return new LoginResponseDto(dto.email, hasProfile, hasLoveLanguage, hasPersonality);
   }
 
   /**
@@ -73,7 +76,7 @@ export class AuthController {
       );
     }
 
-    const { sessionId } = await this.authService.login(dto.email, dto.password);
+    const { sessionId, userId } = await this.authService.login(dto.email, dto.password);
 
     res.cookie('session_id', sessionId, {
       httpOnly: true,
@@ -82,7 +85,10 @@ export class AuthController {
       path: '/',
     });
 
-    return new LoginResponseDto(dto.email);
+    // Check if user has profile, personality, and love language data
+    const { hasProfile, hasPersonality, hasLoveLanguage } = await this.authService.checkUserDataStatus(userId);
+
+    return new LoginResponseDto(dto.email, hasProfile, hasLoveLanguage, hasPersonality);
   }
 
   /**
