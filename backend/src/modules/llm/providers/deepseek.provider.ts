@@ -6,8 +6,8 @@ import {
 } from 'src/modules/llm/providers/llm-provider-base.service';
 
 enum DeepSeekModel {
-  CHAT = 'deepseek-chat',
-  CODER = 'deepseek-coder',
+  R1 = 'deepseek-ai/DeepSeek-R1',
+  V3 = 'deepseek-ai/DeepSeek-V3',
 }
 
 interface DeepSeekRequest {
@@ -29,7 +29,7 @@ interface DeepSeekResponse {
 @Injectable()
 export class DeepSeekProvider extends LLMProviderBaseService {
   private readonly endpoint = 'https://api.together.xyz/v1/chat/completions';
-  private readonly model = DeepSeekModel.CHAT;
+  private readonly model = DeepSeekModel.R1;
   private readonly temperature = 0.7;
   private readonly maxTokens = 1024;
 
@@ -61,7 +61,7 @@ export class DeepSeekProvider extends LLMProviderBaseService {
       const content = response.data?.choices?.[0]?.message?.content?.trim();
       return content ?? '';
     } catch (error) {
-      console.error('DeepSeek API error:', error);
+      console.error('DeepSeek API error:', error?.response?.data || error.message);
       throw new InternalServerErrorException('Failed to get response from DeepSeek');
     }
   }
