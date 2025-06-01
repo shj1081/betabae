@@ -11,7 +11,7 @@ export default function SeriousnessPage () {
   const [seriousness, setSeriousness] = useState(3); 
 
   const handleNext = () => {
-    router.push('/match/MatchingPage');
+    router.push('/profile/ClonePage');
   };
 
   return (
@@ -26,11 +26,10 @@ export default function SeriousnessPage () {
           value={seriousness}
           onChange={setSeriousness}
         />
-
-        <View style={styles.buttonWrapper}>
-          <CompleteButton title="Complete" onPress={handleNext} />
-        </View>
       </ScrollView>
+      <View style={styles.buttonWrapper}>
+        <CompleteButton title="Complete" onPress={handleNext} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -47,11 +46,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     marginHorizontal: 22,
-    marginBottom: 40,
+    marginBottom: 80,
     color: COLORS.BLACK,
   },
   buttonWrapper: {
-    marginTop: 30,
-    marginHorizontal: 10,
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+    backgroundColor: COLORS.WHITE,
   },
 });
