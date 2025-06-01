@@ -9,12 +9,23 @@ import {
 } from 'src/modules/llm/dto/betabae-clone.dto';
 import { LLMModel } from 'src/modules/llm/enums/llm.enums';
 import {
+  LLMMessageContext,
   LLMProviderBaseService,
   LoveLanguageContext,
   PersonalityContext,
   UserContext,
 } from 'src/modules/llm/providers/llm-provider-base.service';
 import { OpenAIProvider } from 'src/modules/llm/providers/openai.provider';
+
+export interface MessageRequestContext {
+  role: 'user' | 'partner';
+  content: string;
+}
+
+export interface BetaBaeMessageRequest {
+  messages: MessageRequestContext[];
+  partnerId: number;
+}
 
 @Injectable()
 export class LlmCloneService {
@@ -158,6 +169,35 @@ export class LlmCloneService {
     });
 
     return;
+  }
+  async getBetaBaeResponse(
+    userId: number,
+    { partnerId, messages }: BetaBaeMessageRequest,
+  ): Promise<string> {
+    const betaBaeClone = await this.prisma.betaBaeClone.findUnique({
+      where: { user_id: partnerId },
+    });
+
+    if (!betaBaeClone) {
+      throw new BadRequestException('Beta clone does not exist for this user');
+    }
+
+    // Map to OpenAI-compatible messages
+    const llmMessages: LLMMessageContext[] = messages.map((msg) => ({
+      role: msg.role === 'partner' ? 'assistant' : 'user',
+      content: msg.content,
+    }));
+
+    // Optional: Add system prompt using the user's summary as the clone's persona
+    const systemPrompt: LLMMessageContext = {
+      role: 'system',
+      content:
+        betaBaeClone.user_context || 'You are a charming, emotionally intelligent dating partner.',
+    };
+
+    const response = await this.llmProvider.getLLMResponse([systemPrompt, ...llmMessages]);
+
+    return response;
   }
 
   /**

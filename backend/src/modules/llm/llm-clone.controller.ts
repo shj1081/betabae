@@ -3,7 +3,7 @@ import {
   BetaBaeCreateRequestDto,
   BetaBaeUpdateRequestDto,
 } from 'src/modules/llm/dto/betabae-clone.dto';
-import { LlmCloneService } from 'src/modules/llm/llm-clone.service';
+import { BetaBaeMessageRequest, LlmCloneService } from 'src/modules/llm/llm-clone.service';
 import { AuthenticatedRequest } from 'src/modules/types/authenticated-request.interface';
 
 @Controller('llm-clone')
@@ -23,5 +23,10 @@ export class LlmCloneController {
   @Post('update')
   async updateBetaBae(@Req() req: AuthenticatedRequest, @Body() body: BetaBaeUpdateRequestDto) {
     await this.llmCloneService.updateBetaBae(req.user.id, body);
+  }
+
+  @Post('response')
+  async getBetaBaeResponse(@Req() req: AuthenticatedRequest, @Body() body: BetaBaeMessageRequest) {
+    return await this.llmCloneService.getBetaBaeResponse(req.user.id, body);
   }
 }

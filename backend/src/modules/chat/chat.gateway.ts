@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -14,7 +14,7 @@ import { EnterRoomDto, LeaveRoomDto, SendTextDto } from 'src/dto/chat/chat-gatew
 import { MessageResponseDto } from 'src/dto/chat/message.response.dto';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 import { RedisService } from 'src/infra/redis/redis.service';
-import { LlmCloneService } from '../llm/llm-clone.service';
+import { LlmCloneService, MessageRequestContext } from '../llm/llm-clone.service';
 import { ChatService } from './chat.service';
 
 interface U extends Socket {
@@ -128,12 +128,38 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // Check if this is a BETA_BAE conversation type
       if (conv && conv.type === 'BETA_BAE') {
-        const bot = await this.llm.getBotResponse(dto.text);
+        const raw = await this.redis.get(`messages:${dto.cid}`);
+        if (!raw) {
+          throw new BadRequestException('No conversation info found in Redis');
+        }
+        const conversationInfo: {
+          partnerId: number;
+          messages: { sender_id: number; message_text: string }[];
+        } = JSON.parse(raw || '{}');
+
+        if (!conversationInfo?.messages || !conversationInfo.partnerId) {
+          throw new BadRequestException('Conversation info missing or malformed');
+        }
+
+        const messages: MessageRequestContext[] = conversationInfo.messages.map((msg) => ({
+          role: msg.sender_id === 0 ? 'user' : 'partner',
+          content: msg.message_text,
+        }));
+
+        const bot = await this.llm.getBetaBaeResponse({
+          partnerId: conversationInfo.partnerId,
+          messages,
+        });
+
         const botMsg = await this.chatSrv.createText(0, dto.cid, bot);
         await this.broadcast(dto.cid, botMsg);
       }
     } catch (error) {
-      this.logger.error(`Error handling BETA_BAE response: ${error.message}`, error.stack);
+      if (error instanceof Error) {
+        this.logger.error(`Error handling BETA_BAE response: ${error.message}`, error.stack);
+      } else {
+        this.logger.error('Error handling BETA_BAE response: Unknown error');
+      }
     }
   }
 
