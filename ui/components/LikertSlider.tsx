@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import Slider from '@react-native-community/slider';
 import COLORS from '@/constants/colors';
 
@@ -10,35 +10,25 @@ interface LikertSliderProps {
 }
 
 const LikertSlider = ({ question, value, onChange }: LikertSliderProps) => {
-  const marks = [1, 2, 3, 4, 5];
-
   return (
     <View style={styles.container}>
       <Text style={styles.question}>{question}</Text>
 
+      <Slider
+        value={value}
+        onValueChange={onChange}
+        minimumValue={1}
+        maximumValue={5}
+        step={1}
+        minimumTrackTintColor={COLORS.MAIN}
+        maximumTrackTintColor="#ccc"
+        thumbTintColor={COLORS.LIGHT_GRAY}
+        style={styles.slider}
+      />
+
       <View style={styles.labelRow}>
         <Text style={styles.label}>Disagree</Text>
         <Text style={styles.label}>Agree</Text>
-      </View>
-
-      <View style={styles.trackWrapper}>
-        <Slider
-          value={value}
-          onValueChange={onChange}
-          minimumValue={1}
-          maximumValue={5}
-          step={1}
-          minimumTrackTintColor="#C52B67"
-          maximumTrackTintColor="#ccc"
-          thumbTintColor="#EBEBEB"
-          style={styles.slider}
-        />
-
-        <View style={styles.tickContainer}>
-          {marks.map((_, i) => (
-            <View key={i} style={styles.tick} />
-          ))}
-        </View>
       </View>
     </View>
   );
@@ -57,32 +47,18 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     fontWeight: '500',
   },
+  slider: {
+    width: '100%',
+    height: 40,
+  },
   labelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginTop: 4,
+    paddingHorizontal: 4,
   },
   label: {
     fontSize: 14,
     color: COLORS.BLACK,
-  },
-  trackWrapper: {
-    position: 'relative',
-    paddingVertical: 12,
-  },
-  slider: {
-    height: 40,
-  },
-  tickContainer: {
-    ...StyleSheet.absoluteFillObject,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-  },
-  tick: {
-    width: 2,
-    height: 10,
-    backgroundColor: COLORS.DARK_GRAY,
   },
 });
