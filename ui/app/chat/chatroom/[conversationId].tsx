@@ -45,7 +45,6 @@ export default function ChatRoomPage() {
         const sortedMessages = res.data.messages.sort(
           (a: Message, b: Message) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
         );
-
         setMessages(sortedMessages);
 
         const senderIds = [...new Set(sortedMessages.map((m: Message) => m.sender.id))];
@@ -59,40 +58,32 @@ export default function ChatRoomPage() {
     };
 
     fetchMessages();
+  }, [conversationId]);
 
+  useEffect(() => {
     const socket = connectSocket();
     socket.emit('enter', { cid: Number(conversationId) });
 
-    socket.on('newMessage', (msg: Message) => {
-      const exists = messages.find((m) => m.messageId === msg.messageId);
-      if (exists) return;
-      if (msg.sender.name === myName) return;
-      setMessages((prev) => [...prev, msg]);
-    });
+    const handleNewMessage = (msg: Message) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m.messageId === msg.messageId)) {
+          return prev;
+        }
+        if (msg.sender.id === userId) {
+          return prev;
+        }
+        return [...prev, msg];
+      });
+    };
+
+    socket.on('newMessage', handleNewMessage);
 
     return () => {
       socket.emit('leave', { cid: Number(conversationId) });
-      socket.off('newMessage');
+      socket.off('newMessage', handleNewMessage);
     };
-  }, [conversationId, myName, messages]);
+  }, [conversationId, userId]);
 
-  const fetchUserProfile = async (userId: number) => {
-    if (userId === 0) return; // Skip betabae for API call
-    if (userProfiles[userId]) return;
-    try {
-      const res = await api.get(`/user/info/${userId}`);
-      const profile = res.data.profile;
-      setUserProfiles((prev) => ({
-        ...prev,
-        [userId]: {
-          nickname: res.data.nickname,
-          profileImageUrl: profile?.profile_image_url || '',
-        },
-      }));
-    } catch (err) {
-      console.error(`❌ Failed to load profile for user ${userId}`, err);
-    }
-  };
 
   useEffect(() => {
     const fetchUser = async () => {
