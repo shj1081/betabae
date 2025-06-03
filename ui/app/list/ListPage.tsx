@@ -12,7 +12,7 @@ import BottomTabBar from '@/components/BottomTabBar';
 import COLORS from '@/constants/colors';
 import api from '@/lib/api';
 import ListFilterTab from '@/components/ListFilterTab';
-import TalkButton from '@/components/TalkButton'; 
+import TalkButton from '@/components/TalkButton';
 
 interface MatchItem {
   id: number;
@@ -26,7 +26,11 @@ interface MatchItem {
     legal_name: string;
     nickname: string;
   };
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  status: string;
+  requesterConsent: boolean;
+  requestedConsent: boolean;
+  realBaeRequesterConsent: boolean;
+  realBaeRequestedConsent: boolean;
 }
 
 interface UserProfile {
@@ -46,7 +50,7 @@ export default function ListPage() {
     const fetchUserAndMatches = async () => {
       try {
         const userRes = await api.get('/user/profile');
-        const id = userRes.data.user?.id;
+        const id = userRes.data.user?.id ?? null;
         setUserId(id);
 
         const matchRes = await api.get('/match');
@@ -57,44 +61,40 @@ export default function ListPage() {
         setLoading(false);
       }
     };
-
     fetchUserAndMatches();
   }, []);
 
-  const fetchUserProfile = async (userId: number) => {
-    if (userProfiles[userId]) return;
+  const fetchUserProfile = async (uid: number) => {
+    if (userProfiles[uid]) return;
 
     try {
-      const res = await api.get(`/user/info/${userId}`);
+      const res = await api.get(`/user/info/${uid}`);
       const profile = res.data.profile;
       setUserProfiles((prev) => ({
         ...prev,
-        [userId]: {
-          id: userId,
+        [uid]: {
+          id: uid,
           nickname: res.data.nickname,
           profileImageUrl: profile?.profile_image_url || '',
         },
       }));
     } catch (err) {
-      console.error(`❌ Failed to load profile for user ${userId}`, err);
+      console.error(`❌ Failed to load profile for user ${uid}`, err);
     }
   };
 
   useEffect(() => {
     if (userId === null) return;
-
-    const userIds = matches.flatMap((match) => [
-      match.requester.id,
-      match.requested.id,
-    ]);
-    const uniqueIds = Array.from(new Set(userIds));
-    uniqueIds.forEach((id) => fetchUserProfile(id));
+    const allUserIds = matches.flatMap((m) => [m.requester.id, m.requested.id]);
+    const uniqueIds = Array.from(new Set(allUserIds));
+    uniqueIds.forEach((uid) => fetchUserProfile(uid));
   }, [matches, userId]);
 
   const handleAcceptRealBae = async (matchId: number) => {
     try {
       await api.post(`/match/${matchId}/real-bae/accept`);
       Alert.alert('Accepted', 'You accepted RealBae chat 💌');
+      setMatches((prev) => prev.filter((m) => m.id !== matchId));
     } catch (err) {
       console.error(`❌ Accept error:`, err);
       Alert.alert('Error', 'Failed to accept RealBae');
@@ -114,37 +114,92 @@ export default function ListPage() {
     const isRequester = selectedTab === 'liked';
     const targetUser = isRequester ? item.requested : item.requester;
     const profile = userProfiles[targetUser.id];
+    const statusUpper = item.status.toUpperCase().trim();
 
-    const showTalkButton = item.status === 'ACCEPTED' && userId !== null;
-
-    return (
-      <View style={styles.notificationRow}>
-        <View style={styles.userSection}>
-          {profile?.profileImageUrl ? (
-            <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarPlaceholder} />
-          )}
-          <Text style={styles.message}>{targetUser.nickname}</Text>
+    if (statusUpper === 'REJECTED') {
+      return (
+        <View style={styles.notificationRow}>
+          <View style={styles.userSection}>
+            {profile?.profileImageUrl ? (
+              <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder} />
+            )}
+            <Text style={styles.message}>{targetUser.nickname}</Text>
+          </View>
+          <View style={styles.statusBadgeRejected}>
+            <Text style={styles.statusTextRejected}>Rejected</Text>
+          </View>
         </View>
+      );
+    }
 
-        {showTalkButton && (
+    if (statusUpper === 'PENDING') {
+      return (
+        <View style={styles.notificationRow}>
+          <View style={styles.userSection}>
+            {profile?.profileImageUrl ? (
+              <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder} />
+            )}
+            <Text style={styles.message}>{targetUser.nickname}</Text>
+          </View>
+          <View style={styles.statusBadgeWaiting}>
+            <Text style={styles.statusTextWaiting}>Waiting</Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (statusUpper === 'ACCEPTED') {
+      if (item.realBaeRequesterConsent && item.realBaeRequestedConsent) {
+        return (
+          <View style={styles.notificationRow}>
+            <View style={styles.userSection}>
+              {profile?.profileImageUrl ? (
+                <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
+              ) : (
+                <View style={styles.avatarPlaceholder} />
+              )}
+              <Text style={styles.message}>{targetUser.nickname}</Text>
+            </View>
+            <View style={styles.statusBadgeMatched}>
+              <Text style={styles.statusTextMatched}>Matched</Text>
+            </View>
+          </View>
+        );
+      }
+
+      return (
+        <View style={styles.notificationRow}>
+          <View style={styles.userSection}>
+            {profile?.profileImageUrl ? (
+              <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder} />
+            )}
+            <Text style={styles.message}>{targetUser.nickname}</Text>
+          </View>
           <TalkButton
             title="Talk with RealBae"
             onPress={() => handleAcceptRealBae(item.id)}
             style={{ marginLeft: 'auto' }}
           />
-        )}
-      </View>
-    );
+        </View>
+      );
+    }
+
+    return null;
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>List</Text>
       <ListFilterTab selected={selectedTab} onSelect={setSelectedTab} />
+
       {loading ? (
-        <ActivityIndicator size="large" color={COLORS.PRIMARY} style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" style={{ marginTop: 50 }} />
       ) : (
         <FlatList
           data={filteredMatches}
@@ -154,6 +209,7 @@ export default function ListPage() {
           contentContainerStyle={styles.list}
         />
       )}
+
       <BottomTabBar />
     </View>
   );
@@ -207,5 +263,37 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: COLORS.LIGHT_GRAY,
     marginHorizontal: 20,
+  },
+  statusBadgeRejected: {
+    backgroundColor: 'transparent',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.MAIN,
+  },
+  statusTextRejected: {
+    color: COLORS.MAIN,
+    fontWeight: '600',
+  },
+  statusBadgeWaiting: {
+    backgroundColor: COLORS.LIGHT_GRAY, 
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  statusTextWaiting: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  statusBadgeMatched: {
+    backgroundColor: COLORS.LIGHT_GRAY, 
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  statusTextMatched: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
