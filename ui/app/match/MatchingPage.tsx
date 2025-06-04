@@ -1,5 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, Alert, Image, Platform } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  Alert,
+  Image,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import Swiper from 'react-native-deck-swiper';
 import BottomTabBar from '@/components/BottomTabBar';
@@ -26,6 +34,8 @@ export default function MatchingPage() {
   const [feedbackText, setFeedbackText] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
 
+  const swiperRef = useRef<Swiper<FeedUser>>(null);
+
   useEffect(() => {
     const fetchFeed = async () => {
       try {
@@ -49,10 +59,19 @@ export default function MatchingPage() {
   const onSwipedTop = (cardIndex: number) => {
     const user = cards[cardIndex];
     console.log('🔍 Profile detail:', user);
+
     router.push({
       pathname: `/match/user/${user.id}`,
       state: { score: user.compatibilityScore },
     });
+
+    setTimeout(() => {
+      setCards((prev) => {
+        const newArr = [...prev];
+        newArr.splice(cardIndex, 0, user);
+        return newArr;
+      });
+    }, 0);
   };
 
   const onSwipedRight = async (cardIndex: number) => {
@@ -88,14 +107,26 @@ export default function MatchingPage() {
 
       <View style={styles.swiperWrapper}>
         <Swiper
+          ref={swiperRef}
           cards={cards}
           renderCard={(card) =>
             card ? (
               <View style={styles.card}>
                 {card.profileImageUrl ? (
-                  <Image source={{ uri: card.profileImageUrl }} style={styles.avatar} />
+                  <Image
+                    source={{ uri: card.profileImageUrl }}
+                    style={styles.avatar}
+                  />
                 ) : (
-                  <View style={[styles.avatar, { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' }]}>
+                  <View
+                    style={[
+                      styles.avatar,
+                      {
+                        backgroundColor: '#eee',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      },
+                    ]}>
                     <Text>No Image</Text>
                   </View>
                 )}
@@ -129,16 +160,20 @@ export default function MatchingPage() {
           swipeThreshold={Platform.OS === 'web' ? 30 : 80}
           cardHorizontalMargin={0}
         />
+
         {showFeedback && (
           <View style={styles.feedbackContainer}>
             <Text style={styles.feedbackText}>{feedbackText}</Text>
           </View>
         )}
       </View>
+
       <BottomTabBar />
     </View>
   );
 }
+
+const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
