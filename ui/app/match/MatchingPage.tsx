@@ -7,6 +7,7 @@ import {
   Alert,
   Image,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Swiper from 'react-native-deck-swiper';
@@ -14,6 +15,7 @@ import BottomTabBar from '@/components/BottomTabBar';
 import LikabilityBar from '@/components/LikabilityBar';
 import COLORS from '@/constants/colors';
 import api from '@/lib/api';
+import PopupWindow from '@/components/PopupWindow';
 
 interface FeedUser {
   id: number;
@@ -33,6 +35,7 @@ export default function MatchingPage() {
   const [cards, setCards] = useState<FeedUser[]>([]);
   const [feedbackText, setFeedbackText] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
+  const [isGuideVisible, setIsGuideVisible] = useState(false);
 
   const swiperRef = useRef<Swiper<FeedUser>>(null);
 
@@ -86,7 +89,7 @@ export default function MatchingPage() {
       Alert.alert('Like!', `${likedUser.nickname}님을 좋아요했어요`);
     } catch (err: any) {
       console.error('❌ Match create error:', err.response?.data || err.message);
-      Alert.alert('에러', err.response?.data?.message || '요청 실패');
+      Alert.alert('Error', err.response?.data?.message || 'Request failed');
     }
   };
 
@@ -103,7 +106,27 @@ export default function MatchingPage() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>📌 Today's Pick</Text>
+      <View style={styles.headerContainer}>
+        <Text style={styles.title}>📌 Today's Pick</Text>
+        <TouchableOpacity
+          style={styles.questionButton}
+          onPress={() => setIsGuideVisible(true)}
+        >
+          <Text style={styles.questionText}>?</Text>
+        </TouchableOpacity>
+      </View>
+
+      <PopupWindow
+        visible={isGuideVisible}
+        title="Match Guide"
+        message={
+          'Swipe ⬅️ : Pass\n' +
+          'Swipe ➡️ : Like\n' +
+          'Swipe ⬆️ : View Detailed Info'
+        }
+        onCancel={() => setIsGuideVisible(false)}
+        onConfirm={() => setIsGuideVisible(false)}
+      />
 
       <View style={styles.swiperWrapper}>
         <Swiper
@@ -126,7 +149,8 @@ export default function MatchingPage() {
                         justifyContent: 'center',
                         alignItems: 'center',
                       },
-                    ]}>
+                    ]}
+                  >
                     <Text>No Image</Text>
                   </View>
                 )}
@@ -167,7 +191,6 @@ export default function MatchingPage() {
           </View>
         )}
       </View>
-
       <BottomTabBar />
     </View>
   );
@@ -181,11 +204,31 @@ const styles = StyleSheet.create({
     paddingTop: 30,
     backgroundColor: COLORS.WHITE,
   },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 22,
+    marginBottom: 10,
+  },
   title: {
+    flex: 1,
     fontSize: 30,
     fontWeight: '600',
-    marginHorizontal: 22,
     color: COLORS.BLACK,
+  },
+  questionButton: {
+    width: 30,      
+    height: 30,     
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.LIGHT_GRAY,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  questionText: {
+    fontSize: 20,
+    color: COLORS.DARK_GRAY,
+    fontWeight: '600',
   },
   swiperWrapper: {
     flex: 1,
