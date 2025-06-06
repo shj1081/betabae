@@ -16,6 +16,8 @@ import LikabilityBar from '@/components/LikabilityBar';
 import COLORS from '@/constants/colors';
 import api from '@/lib/api';
 import PopupWindow from '@/components/PopupWindow';
+import { useMatchStore } from '@/store/matchStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface FeedUser {
   id: number;
@@ -39,11 +41,12 @@ export default function MatchingPage() {
 
   const swiperRef = useRef<Swiper<FeedUser>>(null);
 
+  const { setSelectedUserId } = useMatchStore(); 
+
   useEffect(() => {
     const fetchFeed = async () => {
       try {
         const res = await api.get('/feed');
-        console.log('🧾 Feed response:', res.data.users);
         setCards(res.data.users);
       } catch (err) {
         console.error('❌ Feed fetch error:', err);
@@ -59,14 +62,13 @@ export default function MatchingPage() {
     setTimeout(() => setShowFeedback(false), 500);
   };
 
-  const onSwipedTop = (cardIndex: number) => {
+  const onSwipedTop = async (cardIndex: number) => {
     const user = cards[cardIndex];
     console.log('🔍 Profile detail:', user);
 
-    router.push({
-      pathname: `/match/user/${user.id}`,
-      state: { score: user.compatibilityScore },
-    });
+    setSelectedUserId(user.id);
+    await AsyncStorage.setItem('lastMatchUserId', String(user.id));
+    router.push('/match/UserProfileDetailPage'); 
 
     setTimeout(() => {
       setCards((prev) => {
@@ -85,7 +87,6 @@ export default function MatchingPage() {
       const response = await api.post('/match', {
         requestedId: likedUser.id,
       });
-      console.log('✅ Match created:', response.data);
       Alert.alert('Like!', `${likedUser.nickname}님을 좋아요했어요`);
     } catch (err: any) {
       console.error('❌ Match create error:', err.response?.data || err.message);
@@ -95,12 +96,10 @@ export default function MatchingPage() {
 
   const onSwipedLeft = (cardIndex: number) => {
     showFeedbackMessage('Pass 😥');
-    console.log('Pass..');
     Alert.alert('Pass!', `${cards[cardIndex]?.nickname}님을 넘겼어요`);
   };
 
   const onSwipedBottom = (cardIndex: number) => {
-    console.log('Info!');
     Alert.alert('Info', `${cards[cardIndex]?.nickname}님의 정보를 확인합니다`);
   };
 
@@ -217,8 +216,8 @@ const styles = StyleSheet.create({
     color: COLORS.BLACK,
   },
   questionButton: {
-    width: 30,      
-    height: 30,     
+    width: 30,
+    height: 30,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: COLORS.LIGHT_GRAY,
