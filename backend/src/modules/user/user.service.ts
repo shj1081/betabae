@@ -24,7 +24,7 @@ import { FileService } from '../file/file.service';
 export class UserService {
   constructor(
     private prisma: PrismaService,
-    private fileService: FileService
+    private fileService: FileService,
   ) {}
 
   async getAllUsersExcept(currentUserId: number) {
@@ -75,9 +75,7 @@ export class UserService {
     });
 
     if (!user) {
-      throw new BadRequestException(
-        new ErrorResponseDto(`User with ID ${userId} not found`),
-      );
+      throw new BadRequestException(new ErrorResponseDto(`User with ID ${userId} not found`));
     }
 
     // profile_image_url 필드를 직접 매핑
@@ -108,9 +106,9 @@ export class UserService {
   }
 
   async updateOrCreateUserProfile(
-    userId: number, 
-    dto: UserProfileDto, 
-    profileImage?: Express.Multer.File
+    userId: number,
+    dto: UserProfileDto,
+    profileImage?: Express.Multer.File,
   ) {
     // Check if user exists
     const user = await this.prisma.user.findUnique({
@@ -118,17 +116,15 @@ export class UserService {
     });
 
     if (!user) {
-      throw new NotFoundException(
-        new ErrorResponseDto(`User with ID ${userId} not found`),
-      );
+      throw new NotFoundException(new ErrorResponseDto(`User with ID ${userId} not found`));
     }
-    
+
     // Check if profile exists with related profile image
     const existingProfile = await this.prisma.userProfile.findUnique({
       where: { user_id: userId },
-      include: { profile_image: true }
+      include: { profile_image: true },
     });
-    
+
     // Upload profile image if provided
     let profileMediaId: number | undefined;
     if (profileImage) {
@@ -136,7 +132,7 @@ export class UserService {
         // Upload the file to S3 and create a media record
         const uploadResult = await this.fileService.uploadFile(profileImage, 'profile');
         profileMediaId = uploadResult.id;
-        
+
         // If there was an existing profile image, delete it
         if (existingProfile?.profile_media_id) {
           await this.fileService.deleteFile(existingProfile.profile_media_id);
@@ -196,12 +192,12 @@ export class UserService {
 
       // 새 프로필 생성을 위한 타입 안전한 데이터 객체 생성
       const createProfileData = {
-        nickname: dto.nickname!,
+        nickname: dto.nickname,
         introduce: dto.introduce!,
-        birthday: new Date(dto.birthday!),
-        gender: dto.gender!,
-        province: dto.province!,
-        city: dto.city!,
+        birthday: new Date(dto.birthday),
+        gender: dto.gender,
+        province: dto.province,
+        city: dto.city,
         mbti: dto.mbti!,
         interests: dto.interests,
         profile_media_id: profileMediaId,
@@ -211,9 +207,7 @@ export class UserService {
         data: {
           user_id: userId,
           ...createProfileData,
-          interests: Array.isArray(dto.interests)
-            ? dto.interests.join(',')
-            : dto.interests || '',
+          interests: Array.isArray(dto.interests) ? dto.interests.join(',') : dto.interests || '',
         },
       });
     }
@@ -246,9 +240,7 @@ export class UserService {
     });
 
     if (!user) {
-      throw new NotFoundException(
-        new ErrorResponseDto(`User with ID ${userId} not found`),
-      );
+      throw new NotFoundException(new ErrorResponseDto(`User with ID ${userId} not found`));
     }
 
     // Check if personality exists, upsert if needed
@@ -291,20 +283,13 @@ export class UserService {
       where: { id: userId },
     });
     if (!user) {
-      throw new NotFoundException(
-        new ErrorResponseDto(`User with ID ${userId} not found`),
-      );
+      throw new NotFoundException(new ErrorResponseDto(`User with ID ${userId} not found`));
     }
 
     // 2. Compare passwords
-    const passwordMatch = await bcrypt.compare(
-      dto.currentPassword,
-      user.password_hash,
-    );
+    const passwordMatch = await bcrypt.compare(dto.currentPassword, user.password_hash);
     if (!passwordMatch) {
-      throw new UnauthorizedException(
-        new ErrorResponseDto('Current password is incorrect'),
-      );
+      throw new UnauthorizedException(new ErrorResponseDto('Current password is incorrect'));
     }
 
     // 3. Hash new password
@@ -322,9 +307,7 @@ export class UserService {
 
     if (!loveLanguage) {
       throw new NotFoundException(
-        new ErrorResponseDto(
-          `Love language data for user with ID ${userId} not found`,
-        ),
+        new ErrorResponseDto(`Love language data for user with ID ${userId} not found`),
       );
     }
 
@@ -333,18 +316,13 @@ export class UserService {
     });
   }
 
-  async updateOrCreateUserLoveLanguage(
-    userId: number,
-    dto: UserLoveLanguageDto,
-  ) {
+  async updateOrCreateUserLoveLanguage(userId: number, dto: UserLoveLanguageDto) {
     // Check if user exists
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
     if (!user) {
-      throw new NotFoundException(
-        new ErrorResponseDto(`User with ID ${userId} not found`),
-      );
+      throw new NotFoundException(new ErrorResponseDto(`User with ID ${userId} not found`));
     }
 
     // Check if love language exists, upsert if needed
@@ -394,7 +372,7 @@ export class UserService {
       neuroticism: a5,
       created_at: new Date(), // mock
       updated_at: new Date(), // mock
-    }; 
+    };
 
     // Save to database
     await this.updateOrCreateUserPersonality(userId, {
@@ -437,7 +415,7 @@ export class UserService {
 
   /**
    * Get comprehensive user information including profile, personality, and love language data
-   * 
+   *
    * @param userId - The ID of the user to fetch information for
    * @returns Combined user information including profile, personality, and love language data
    * @throws NotFoundException if the user, personality, or love language data is not found
@@ -471,9 +449,7 @@ export class UserService {
     });
 
     if (!user) {
-      throw new NotFoundException(
-        new ErrorResponseDto(`User with ID ${userId} not found`),
-      );
+      throw new NotFoundException(new ErrorResponseDto(`User with ID ${userId} not found`));
     }
 
     // Get personality data
@@ -513,14 +489,16 @@ export class UserService {
           introduce: user.profile.introduce || undefined, // Convert null to undefined
           gender: user.profile.gender,
           mbti: user.profile.mbti || undefined, // Convert null to undefined
-          interests: typeof user.profile.interests === 'string' 
-            ? user.profile.interests.split(',') 
-            : (user.profile.interests as string[] || []),
+          interests:
+            typeof user.profile.interests === 'string'
+              ? user.profile.interests.split(',')
+              : (user.profile.interests as string[]) || [],
           province: user.profile.province,
           city: user.profile.city,
           profile_image_url: user.profile.profile_image?.file_url || undefined,
         }
-      : { // Create a default profile if null to satisfy type requirements
+      : {
+          // Create a default profile if null to satisfy type requirements
           nickname: '',
           birthday: new Date(),
           gender: Gender.MALE,

@@ -1,2 +1,4 @@
 .DS_Store
 .vscode
+backend/.yarn/install-state.gz
+.idea/

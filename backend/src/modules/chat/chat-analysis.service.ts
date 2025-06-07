@@ -42,8 +42,24 @@ export class ChatAnalysisService {
     const contextMessages = messages.reverse();
     const contextText = contextMessages.map((m) => `[${m.sender_id}] ${m.message_text}`).join('\n');
 
+    const matchId = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { match_id: true },
+    });
+
+    if (!matchId) {
+      throw new BadRequestException(
+        new ErrorResponseDto('Match ID not found for the conversation.'),
+      );
+    }
+
     // 3. Send to LLM (mock)
-    const llmRawResponse = await this.LlmCloneService.getAnswerFromBot(contextText);
+    const llmRawResponse = await this.LlmCloneService.getRealBaeThoughtResponse(
+      message.message_text,
+      userId,
+      contextText,
+      matchId?.match_id,
+    );
 
     // 4. Return analysis result
     return {

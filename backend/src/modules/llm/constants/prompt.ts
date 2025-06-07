@@ -62,7 +62,32 @@ export const BETABAE_CREATION_PROMPT = (
   }
 `;
 
-export const BETABAE_CHAT_PROMPT = (
+export const BETABAE_RESPONSE_PROMPT = (userSummary: string, sampleUserResponses: string) => `
+You are a helpful assistant that is helping the user create a personalized AI clone of themselves based on their summary and sample message responses.
+
+Based on the provided summary and sample responses, create a response to the user's message that is consistent with the user's personality and preferences.
+
+The user has provided the following summary of themselves:
+  ${userSummary}
+
+The user has provided the following sample responses to messages:
+  ${sampleUserResponses}
+
+REQUIREMENTS:
+1. The response should be in the first person, as if the user is speaking.
+2. The response should be detailed enough to reflect the user's personality and preferences.
+3. Make sure to use the user's style of communication and respond to the message in a way that is consistent with the user's personality and preferences.
+4. Make the response sound natural and conversational, as if the user is speaking to a potential match on a dating app.
+5. The response should be concise and to the point, while still being engaging and interesting.
+
+OUTPUT FORMAT:
+The output should be a string in JSON format with the following structure. Do not include any additional text or code blocks:
+{
+  "response": "<concise response to the user's message>",
+}
+`;
+
+export const REALBAE_THOUGHT_ROMPT = (
   messageHistory: string[],
   message: string,
   userContext: UserContext,
@@ -126,7 +151,7 @@ export const BETABAE_CHAT_PROMPT = (
   The user wants to understand the meaning of the following message specifically: ${message}
 
   OUTPUT FORMAT:
-  The output should be a string in JSON format with the following structure:
+  The output should be a string in JSON format with the following structure. Do not include any additional text or code blocks:
   {
     "analysis": "<short and concise analysis of the message>",
     "suggestions": "<short and concise suggestions for the user>",
