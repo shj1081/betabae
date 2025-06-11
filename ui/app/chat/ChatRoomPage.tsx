@@ -145,58 +145,6 @@ export default function ChatRoomPage() {
     setText('');
   };
 
-  const sendImage = async () => {
-    if (!conversationId) return;
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        alert('사진 접근 권한이 필요합니다.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 1,
-      });
-
-      if (result.canceled || !result.assets?.length) return;
-
-      const asset = result.assets[0];
-      const uri = asset.uri;
-      const fileName = uri.split('/').pop()!;
-      const match = /\.(\w+)$/.exec(fileName);
-      const fileExt = match?.[1]?.toLowerCase();
-
-      let mimeType = 'image/*';
-      if (fileExt === 'jpg' || fileExt === 'jpeg') {
-        mimeType = 'image/jpeg';
-      } else if (fileExt === 'png') {
-        mimeType = 'image/png';
-      } else if (fileExt === 'heic') {
-        mimeType = 'image/heic';
-      }
-
-      const formData = new FormData();
-      formData.append('file', {
-        uri,
-        name: fileName,
-        type: mimeType,
-      } as any);
-      formData.append('messageText', '');
-
-      await api.post(
-        `/chat/conversations/${conversationId}/messages/image`,
-        formData,
-        {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        }
-      );
-    } catch (err: any) {
-      console.error('❌ 이미지 전송 실패:', err.response?.data || err.message);
-    }
-  };
-
   const fetchUserProfile = async (uid: number) => {
     if (userProfiles[uid]) return;
     try {
@@ -282,7 +230,7 @@ export default function ChatRoomPage() {
       </ScrollView>
 
       <View style={styles.inputRow}>
-        <TouchableOpacity style={styles.iconButton} onPress={sendImage}>
+        <TouchableOpacity style={styles.iconButton}>
           <Svg width={24} height={24} viewBox="0 -960 960 960" fill="#696969">
             <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Z" />
           </Svg>
