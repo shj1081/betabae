@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import InputField from "@/components/InputField";
 import BackButton from "@/components/BackButton";
 import CompleteButton from "@/components/CompleteButton";
+import PopupWindow from '@/components/PopupWindow';
 import COLORS from "@/constants/colors";
 import api from "@/lib/api";
 
@@ -31,6 +32,8 @@ export default function ClonePage() {
   const [q10, setQ10] = useState("");
 
   const [userId, setUserId] = useState<number | null>(null);
+  const [errorPopupVisible, setErrorPopupVisible] = useState(false);
+  const [successPopupVisible, setSuccessPopupVisible] = useState(false);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -52,6 +55,11 @@ export default function ClonePage() {
     }
 
     const answers = [q1, q2, q3, q4, q5, q6, q7, q8, q9, q10];
+    const hasEmpty = answers.some((ans) => ans.trim() === "");
+    if (hasEmpty) {
+      setErrorPopupVisible(true);
+      return;
+    }
 
     try {
       await api.post("/llm-clone/test-create", {
@@ -59,11 +67,17 @@ export default function ClonePage() {
         sampleUserResponses: answers,
       });
 
-      router.push("/match/MatchingPage");
+      setSuccessPopupVisible(true);
     } catch (error: any) {
       console.error("createBetaBae 실패:", error.response ?? error.message);
       Alert.alert("Failed to make clone.");
     }
+  };
+
+  const handleErrorPopupClose = () => setErrorPopupVisible(false);
+  const handleSuccessPopupClose = () => {
+    setSuccessPopupVisible(false);
+    router.push("/match/MatchingPage");
   };
 
   return (
@@ -153,6 +167,23 @@ export default function ClonePage() {
       <View style={styles.buttonWrapper}>
         <CompleteButton title="Complete" onPress={handleComplete} />
       </View>
+      
+      <PopupWindow
+        visible={errorPopupVisible}
+        title="Error"
+        message="Please fill out all fields."
+        onCancel={handleErrorPopupClose}
+        onConfirm={handleErrorPopupClose}
+      />
+
+      <PopupWindow
+        visible={successPopupVisible}
+        title="Congratulations 🎉"
+        message="Your profile created."
+        onCancel={handleSuccessPopupClose}
+        onConfirm={handleSuccessPopupClose}
+      />
+
     </SafeAreaView>
   );
 }
