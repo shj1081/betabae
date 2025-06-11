@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import BackButton from '@/components/BackButton';
 import InputField from '@/components/InputField';
 import CompleteButton from '@/components/CompleteButton';
+import PopupWindow from '@/components/PopupWindow';
 import COLORS from '@/constants/colors';
 import api from '@/lib/api';
 
@@ -30,15 +31,19 @@ export default function SignupPage() {
     confirmPassword: '',
   });
 
-  const validate = () => {
-    let isValid = true;
-    setErrors((prev) => ({ ...prev, password: '', confirmPassword: '' })); 
+  const [showPopup, setShowPopup] = useState(false);
 
-    const newErrors = { password: '', confirmPassword: '' };
+  const validateEmptyFields = () => {
+    return name.trim() && email.trim() && password.trim() && confirmPassword.trim();
+  };
+
+  const validateFields = () => {
+    let isValid = true;
+    const newErrors = { email: '', password: '', confirmPassword: '' };
 
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@#$%^&*!()\-+=.\/])[A-Za-z\d@#$%^&*!()\-+=.\/]{8,}$/;
     if (!passwordRegex.test(password)) {
-      newErrors.password = 'Password must include letters, numbers, and symbols.';
+      newErrors.password = "Passwords must contain at least one alpha one numeric and one ( @#$ ^&*()-_+= . '/ ) character";;
       isValid = false;
     }
 
@@ -47,23 +52,27 @@ export default function SignupPage() {
       isValid = false;
     }
 
-    setErrors((prev) => ({ ...prev, ...newErrors }));
+    setErrors(newErrors);
     return isValid;
   };
 
   const handleNext = async () => {
-    if (!validate()) return;
+    if (!validateEmptyFields()) {
+      setShowPopup(true);
+      return;
+    }
+
+    if (!validateFields()) return;
 
     try {
-        const response = await api.post('/auth/register', {
+      const response = await api.post('/auth/register', {
         email,
         password,
         legal_name: name,
-        });
+      });
 
-        console.log('✅ register success:', response.data);
-
-        router.push('/auth/WelcomePage');
+      console.log('✅ register success:', response.data);
+      router.push('/auth/WelcomePage');
     } catch (error: any) {
       if (error.response?.data?.message?.includes('Email')) {
         setErrors((prev) => ({ ...prev, email: 'This email is already in use.' }));
@@ -71,7 +80,9 @@ export default function SignupPage() {
         Alert.alert('Error', 'Registration failed.');
       }
     }
-    };
+  };
+
+  const handlePopupClose = () => setShowPopup(false);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -118,12 +129,20 @@ export default function SignupPage() {
             onChangeText={setConfirmPassword}
           />
           {errors.confirmPassword ? <Text style={styles.error}>{errors.confirmPassword}</Text> : null}
-
         </ScrollView>
       </KeyboardAvoidingView>
+
       <View style={styles.buttonWrapper}>
         <CompleteButton title="Complete" onPress={handleNext} />
       </View>
+
+      <PopupWindow
+        visible={showPopup}
+        title="Error"
+        message="Please fill out all fields."
+        onCancel={handlePopupClose}
+        onConfirm={handlePopupClose}
+      />
     </SafeAreaView>
   );
 }
@@ -143,13 +162,14 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     marginHorizontal: 22,
-    marginBottom: 80,
+    marginBottom: 50,
     color: COLORS.BLACK,
   },
   error: {
     color: COLORS.SUB,
     marginHorizontal: 24,
-    marginBottom: 20,
+    marginTop: -15,
+    marginBottom: 10,
     fontSize: 13,
   },
   buttonWrapper: {
