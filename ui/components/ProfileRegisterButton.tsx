@@ -22,7 +22,7 @@ const ProfileRegisterButton = ({ onPress, style }: Props) => {
       >
         {({ pressed }) => (
           <Text style={[styles.buttonText, pressed && styles.pressedText]}>
-            Register
+            Start
           </Text>
         )}
       </Pressable>
