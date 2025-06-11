@@ -12,6 +12,7 @@ import MatchingButton from '@/components/MatchingButton';
 import BottomTabBar from '@/components/BottomTabBar';
 import COLORS from '@/constants/colors';
 import api from '@/lib/api';
+import { Svg, Path } from 'react-native-svg';
 
 interface MatchItem {
   id: number;
@@ -249,6 +250,18 @@ export default function AlarmPage() {
           keyExtractor={(item) => item.id.toString()}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <View style={styles.emptyWrapper}>
+              <Svg width={96} height={96} viewBox="0 0 256 256" fill="none">
+                <Path
+                  d="M12,2c-0.828,0 -1.5,0.672 -1.5,1.5v0.69531c-2.58682,0.66678 -4.5,3.00949 -4.5,5.80469v6l-1.53516,1.15625h-0.00195c-0.28839,0.18363 -0.46297,0.50186 -0.46289,0.84375c0,0.55228 0.44772,1 1,1h7h7c0.55228,0 1,-0.44772 1,-1c0.00008,-0.34189 -0.17451,-0.66012 -0.46289,-0.84375l-1.53711,-1.15625v-6c0,-2.7952 -1.91318,-5.1379 -4.5,-5.80469v-0.69531c0,-0.828 -0.672,-1.5 -1.5,-1.5zM10,20c0,1.1 0.9,2 2,2c1.1,0 2,-0.9 2,-2z"
+                  fill="#EBEBEB"
+                  transform="scale(10.66667)"
+                />
+              </Svg>
+              <Text style={styles.emptyText}>There are no new notifications.</Text>
+            </View>
+          }
         />
       )}
       <BottomTabBar />
@@ -301,4 +314,16 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.LIGHT_GRAY,
     marginHorizontal: 20,
   },
+  emptyWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 80,
+  },
+  emptyText: {
+    marginTop: 24,
+    fontSize: 16,
+    color: COLORS.DARK_GRAY,
+    textAlign: 'center',
+  },
+
 });
