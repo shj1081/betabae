@@ -7,25 +7,27 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from 'react-native';
 import BackButton from '@/components/BackButton';
 import AddressBox from '@/components/AddressBox';
 import CompleteButton from '@/components/CompleteButton';
+import PopupWindow from '@/components/PopupWindow';
 import COLORS from '@/constants/colors';
 import { useRouter } from 'expo-router';
 import { useProfileStore } from '@/store/useProfileStore';
-
 
 export default function AddressPage() {
   const router = useRouter();
 
   const [province, setProvince] = useState('');
   const [city, setCity] = useState('');
+  const [showPopup, setShowPopup] = useState(false);
+
+  const handlePopupClose = () => setShowPopup(false);
 
   const handleNext = () => {
     if (!province || !city) {
-      Alert.alert('Enter all fields.');
+      setShowPopup(true);
       return;
     }
 
@@ -56,9 +58,18 @@ export default function AddressPage() {
           />
         </ScrollView>
       </KeyboardAvoidingView>
+
       <View style={styles.buttonWrapper}>
         <CompleteButton title="Next" onPress={handleNext} />
       </View>
+
+      <PopupWindow
+        visible={showPopup}
+        title="Error"
+        message="Please fill out all fields."
+        onCancel={handlePopupClose}
+        onConfirm={handlePopupClose}
+      />
     </SafeAreaView>
   );
 }
