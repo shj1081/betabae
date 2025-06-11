@@ -10,6 +10,7 @@ import {
 import BackButton from '@/components/BackButton';
 import PhotoUploader from '@/components/PhotoUploader';
 import CompleteButton from '@/components/CompleteButton';
+import PopupWindow from '@/components/PopupWindow';
 import COLORS from '@/constants/colors';
 import api from '@/lib/api';
 import { useRouter } from 'expo-router';
@@ -19,6 +20,8 @@ export default function PhotoRegisterPage() {
   const router = useRouter();
   const [photos, setPhotos] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
+  const handlePopupClose = () => setShowPopup(false);
 
   const nickname = useProfileStore((state) => state.nickname);
   const introduce = useProfileStore((state) => state.introduce);
@@ -31,7 +34,7 @@ export default function PhotoRegisterPage() {
 
   const handleNext = async () => {
     if (photos.length < 1) {
-      Alert.alert('Please upload at least 1 photo.');
+      setShowPopup(true);
       return;
     }
 
@@ -49,7 +52,7 @@ export default function PhotoRegisterPage() {
           type: photo.type || 'image/jpeg',
         } as any);
       } else {
-        Alert.alert('지원되지 않는 이미지 형식입니다.');
+        Alert.alert('unacceptable format.');
         return;
       }
 
@@ -61,17 +64,14 @@ export default function PhotoRegisterPage() {
       formData.append('province', province);
       formData.append('city', city);
 
-      // 👉 3. 관심사 (interests)
       interests.forEach((interest) => {
-        formData.append('interests', interest); // 서버가 배열 지원 시 이렇게 개별로 append
+        formData.append('interests', interest); 
       });
 
-      // 👉 4. formData 확인 로그
       for (let pair of formData.entries()) {
         console.log(`${pair[0]}:`, pair[1]);
       }
 
-      // 👉 5. 전송
       const res = await api.put('/user/profile', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -82,8 +82,8 @@ export default function PhotoRegisterPage() {
         },
       });
 
-      console.log('✅ 프로필 등록 성공:', res.data);
-      Alert.alert('✅ 프로필이 등록되었습니다!');
+      console.log('✅ Profile register Success:', res.data);
+      Alert.alert('✅ Profile Registered!');
       router.push('/profile/PersonalityPage');
     } catch (err: any) {
       console.error('❌ Upload failed:', err);
@@ -111,6 +111,14 @@ export default function PhotoRegisterPage() {
           disabled={uploading}
         />
       </View>
+
+      <PopupWindow
+        visible={showPopup}
+        title="Error"
+        message="Please register your profile photo."
+        onCancel={handlePopupClose}
+        onConfirm={handlePopupClose}
+      />
     </SafeAreaView>
   );
 }
