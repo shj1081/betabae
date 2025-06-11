@@ -11,12 +11,14 @@ import {
   Image,
 } from 'react-native';
 import { Svg, Path } from 'react-native-svg';
-import { useLocalSearchParams } from 'expo-router';
 import BackButton from '@/components/BackButton';
 import COLORS from '@/constants/colors';
 import { connectSocket } from '@/lib/socket';
 import api from '@/lib/api';
 import * as ImagePicker from 'expo-image-picker';
+import { useChatStore } from '@/store/chatStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 
 interface Message {
   messageId: number;
@@ -26,16 +28,35 @@ interface Message {
 }
 
 export default function ChatRoomPage() {
-  const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
+  const { conversationId, resetConversationId } = useChatStore();
+  const router = useRouter();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState('');
   const scrollRef = useRef<ScrollView>(null);
   const [partnerName, setPartnerName] = useState('');
   const [myName, setMyName] = useState('');
   const [userId, setUserId] = useState<number | null>(null);
-  const [userProfiles, setUserProfiles] = useState<Record<number, { nickname: string; profileImageUrl: string }>>({});
+  const [userProfiles, setUserProfiles] = useState<
+    Record<number, { nickname: string; profileImageUrl: string }>
+  >({});
 
   useEffect(() => {
+    const restoreId = async () => {
+      if (!conversationId) {
+        const lastId = await AsyncStorage.getItem('lastConversationId');
+        if (lastId) {
+          useChatStore.getState().setConversationId(lastId);
+        } else {
+          router.replace('/chat'); 
+        }
+      }
+    };
+    restoreId();
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) return;
     const fetchMessages = async () => {
       try {
         const res = await api.get(`/chat/conversations/${conversationId}/messages`);
@@ -45,7 +66,6 @@ export default function ChatRoomPage() {
         const sortedMessages = res.data.messages.sort(
           (a: Message, b: Message) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
         );
-
         setMessages(sortedMessages);
 
         const senderIds = [...new Set(sortedMessages.map((m: Message) => m.sender.id))];
@@ -59,40 +79,28 @@ export default function ChatRoomPage() {
     };
 
     fetchMessages();
+  }, [conversationId]);
 
+  useEffect(() => {
+    if (!conversationId) return;
     const socket = connectSocket();
     socket.emit('enter', { cid: Number(conversationId) });
 
-    socket.on('newMessage', (msg: Message) => {
-      const exists = messages.find((m) => m.messageId === msg.messageId);
-      if (exists) return;
-      if (msg.sender.name === myName) return;
-      setMessages((prev) => [...prev, msg]);
-    });
+    const handleNewMessage = (msg: Message) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m.messageId === msg.messageId)) return prev;
+        if (msg.sender.id === userId) return prev;
+        return [...prev, msg];
+      });
+    };
+
+    socket.on('newMessage', handleNewMessage);
 
     return () => {
       socket.emit('leave', { cid: Number(conversationId) });
-      socket.off('newMessage');
+      socket.off('newMessage', handleNewMessage);
     };
-  }, [conversationId, myName, messages]);
-
-  const fetchUserProfile = async (userId: number) => {
-    if (userId === 0) return; // Skip betabae for API call
-    if (userProfiles[userId]) return;
-    try {
-      const res = await api.get(`/user/info/${userId}`);
-      const profile = res.data.profile;
-      setUserProfiles((prev) => ({
-        ...prev,
-        [userId]: {
-          nickname: res.data.nickname,
-          profileImageUrl: profile?.profile_image_url || '',
-        },
-      }));
-    } catch (err) {
-      console.error(`❌ Failed to load profile for user ${userId}`, err);
-    }
-  };
+  }, [conversationId, userId]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -117,7 +125,7 @@ export default function ChatRoomPage() {
   };
 
   const sendText = () => {
-    if (!text.trim()) return;
+    if (!text.trim() || !conversationId) return;
 
     const newMessage: Message = {
       messageId: Date.now(),
@@ -133,56 +141,31 @@ export default function ChatRoomPage() {
       cid: Number(conversationId),
       text,
     });
+
     setText('');
   };
 
-  const sendImage = async () => {
+  const fetchUserProfile = async (uid: number) => {
+    if (userProfiles[uid]) return;
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        alert('사진 접근 권한이 필요합니다.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 1,
-      });
-
-      if (result.canceled || !result.assets?.length) return;
-
-      const image = result.assets[0];
-      const uri = image.uri;
-      const fileName = uri.split('/').pop()!;
-      const match = /\.(\w+)$/.exec(fileName);
-      const fileExt = match?.[1]?.toLowerCase();
-      const mimeType = fileExt === 'jpg' ? 'image/jpeg'
-                      : fileExt === 'jpeg' ? 'image/jpeg'
-                      : fileExt === 'png' ? 'image/png'
-                      : fileExt === 'heic' ? 'image/heic'
-                      : 'image/*';
-
-      const formData = new FormData();
-      formData.append('file', {
-        uri,
-        name: fileName,
-        type: mimeType,
-      } as any);
-      formData.append('messageText', '');
-
-      await api.post(
-        `/chat/conversations/${conversationId}/messages/image`,
-        formData,
-        {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        }
-      );
-
-      console.log('✅ 이미지 전송 완료');
-    } catch (err: any) {
-      console.error('❌ 이미지 전송 실패:', err.response?.data || err.message);
+      const res = await api.get(`/user/info/${uid}`);
+      const profile = res.data.profile;
+      setUserProfiles((prev) => ({
+        ...prev,
+        [uid]: {
+          nickname: res.data.nickname,
+          profileImageUrl: profile?.profile_image_url || '',
+        },
+      }));
+    } catch (err) {
+      console.error(`❌ 프로필 로드 실패 (ID: ${uid}):`, err);
     }
+  };
+
+  const handleBack = async () => {
+    resetConversationId();
+    await AsyncStorage.removeItem('lastConversationId');
+    router.back();
   };
 
   return (
@@ -191,19 +174,24 @@ export default function ChatRoomPage() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
-      <BackButton />
+
+      <BackButton onPress={handleBack} />
+
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.messageList}
         onContentSizeChange={scrollToBottom}
       >
         {messages.map((msg) => {
-          const isMine = msg.sender?.id === userId;
+          const isMine = msg.sender.id === userId;
           const profile = userProfiles[msg.sender.id];
           return (
             <View
               key={msg.messageId}
-              style={[styles.messageRow, isMine ? styles.myMessage : styles.theirMessage]}
+              style={[
+                styles.messageRow,
+                isMine ? styles.myMessage : styles.theirMessage,
+              ]}
             >
               {!isMine && (
                 <View style={styles.profileSection}>
@@ -221,7 +209,9 @@ export default function ChatRoomPage() {
               )}
               <View>
                 {!isMine && (
-                  <Text style={styles.nickname}>{profile?.nickname || msg.sender.name}</Text>
+                  <Text style={styles.nickname}>
+                    {profile?.nickname || msg.sender.name}
+                  </Text>
                 )}
                 <View style={styles.bubble}>
                   <Text style={styles.messageText}>{msg.messageText}</Text>
@@ -240,7 +230,7 @@ export default function ChatRoomPage() {
       </ScrollView>
 
       <View style={styles.inputRow}>
-        <TouchableOpacity style={styles.iconButton} onPress={sendImage}>
+        <TouchableOpacity style={styles.iconButton}>
           <Svg width={24} height={24} viewBox="0 -960 960 960" fill="#696969">
             <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Z" />
           </Svg>
@@ -256,12 +246,6 @@ export default function ChatRoomPage() {
         <TouchableOpacity style={[styles.iconButton, styles.sendButton]} onPress={sendText}>
           <Svg width={24} height={24} viewBox="0 -960 960 960" fill="#fff">
             <Path d="M440-160v-487L216-423l-56-57 320-320 320 320-56 57-224-224v487h-80Z" />
-          </Svg>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.iconButton} onPress={() => console.log('분석')}>
-          <Svg width={24} height={24} viewBox="0 -960 960 960" fill="#C13448">
-            <Path d="M360-160q-19 0-34-11t-22-28l-92-241H40v-80h228l92 244 184-485q7-17 22-28t34-11q19 0 34 11t22 28l92 241h172v80H692l-92-244-184 485q-7 17-22 28t-34 11Z" />
           </Svg>
         </TouchableOpacity>
       </View>

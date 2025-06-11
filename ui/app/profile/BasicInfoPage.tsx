@@ -12,6 +12,7 @@ import InputField from '@/components/InputField';
 import MultipleButton from '@/components/MultipleButton';
 import CompleteButton from '@/components/CompleteButton';
 import BackButton from '@/components/BackButton';
+import PopupWindow from '@/components/PopupWindow';
 import COLORS from '@/constants/colors';
 import { useRouter } from 'expo-router';
 
@@ -23,9 +24,12 @@ export default function BasicInfoPage() {
   const [smoking, setSmoking] = useState('');
   const [drinking, setDrinking] = useState('');
 
+  const [showPopup, setShowPopup] = useState(false);
+  const handlePopupClose = () => setShowPopup(false);
+
   const handleNext = () => {
     if (!job || !height || !religion || !smoking || !drinking) {
-      alert('Enter all fields.');
+      setShowPopup(true);
       return;
     }
     
@@ -99,9 +103,18 @@ export default function BasicInfoPage() {
           />
         </ScrollView>
       </KeyboardAvoidingView>
+
       <View style={styles.buttonWrapper}>
         <CompleteButton title="Next" onPress={handleNext} />
       </View>
+
+      <PopupWindow
+        visible={showPopup}
+        title="Error"
+        message="Please fill out all fields."
+        onCancel={handlePopupClose}
+        onConfirm={handlePopupClose}
+      />
     </SafeAreaView>
   );
 }

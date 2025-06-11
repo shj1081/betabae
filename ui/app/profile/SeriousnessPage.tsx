@@ -28,7 +28,7 @@ export default function SeriousnessPage () {
         />
       </ScrollView>
       <View style={styles.buttonWrapper}>
-        <CompleteButton title="Complete" onPress={handleNext} />
+        <CompleteButton title="Next" onPress={handleNext} />
       </View>
     </SafeAreaView>
   );

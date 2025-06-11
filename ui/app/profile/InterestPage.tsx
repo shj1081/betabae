@@ -14,6 +14,7 @@ import CompleteButton from '@/components/CompleteButton';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useProfileStore } from '@/store/useProfileStore';
+import PopupWindow from '@/components/PopupWindow'; 
 
 interface InterestItemProps {
   label: string;
@@ -44,10 +45,15 @@ export default function InterestPage() {
     'Travel',
     'Running',
     'Bakery',
+    'Cooking',
+    'Reading',
   ]);
   const [selected, setSelected] = useState<string[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [newInterest, setNewInterest] = useState('');
+
+  const [showPopup, setShowPopup] = useState(false);
+  const handlePopupClose = () => setShowPopup(false);
 
   const toggleSelect = (label: string) => {
     if (selected.includes(label)) {
@@ -73,7 +79,7 @@ export default function InterestPage() {
 
   const handleNext = () => {
     if (selected.length === 0) {
-      Alert.alert('Select at least one.');
+      setShowPopup(true);
       return;
     }
 
@@ -131,6 +137,14 @@ export default function InterestPage() {
       <View style={styles.buttonWrapper}>
         <CompleteButton title="Next" onPress={handleNext} />
       </View>
+      
+      <PopupWindow
+        visible={showPopup}
+        title="Error"
+        message="Please fill out all fields."
+        onCancel={handlePopupClose}
+        onConfirm={handlePopupClose}
+      />
     </View>
   );
 }

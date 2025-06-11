@@ -15,9 +15,10 @@ import InputField from '@/components/InputField';
 import BirthdayField from '@/components/BirthdayField';
 import ToggleButton from '@/components/ToggleButton';
 import CompleteButton from '@/components/CompleteButton';
+import PopupWindow from '@/components/PopupWindow';
 import COLORS from '@/constants/colors';
 
-export default function SignupBasicPage () {
+export default function SignupBasicPage() {
   const router = useRouter();
 
   const [phone, setPhone] = useState('');
@@ -26,9 +27,13 @@ export default function SignupBasicPage () {
   const [day, setDay] = useState(0);
   const [gender, setGender] = useState('');
 
+  const [showPopup, setShowPopup] = useState(false);
+
+  const handlePopupClose = () => setShowPopup(false);
+
   const handleNext = () => {
-    if (!year || !month || !day || !gender) {
-      alert('Enter all fields.');
+    if (!phone.trim() || !year || !month || !day || !gender) {
+      setShowPopup(true);
       return;
     }
 
@@ -58,7 +63,6 @@ export default function SignupBasicPage () {
           <InputField
             label="Phone Number"
             placeholder="010-xxxx-xxxx"
-            keyboardType="phone-pad"
             value={phone}
             onChangeText={setPhone}
           />
@@ -82,9 +86,18 @@ export default function SignupBasicPage () {
           />
         </ScrollView>
       </KeyboardAvoidingView>
+
       <View style={styles.buttonWrapper}>
-          <CompleteButton title="Next" onPress={handleNext} />
+        <CompleteButton title="Next" onPress={handleNext} />
       </View>
+
+      <PopupWindow
+        visible={showPopup}
+        title="Error"
+        message="Please fill out all fields."
+        onCancel={handlePopupClose}
+        onConfirm={handlePopupClose}
+      />
     </SafeAreaView>
   );
 }
@@ -102,13 +115,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginHorizontal: 22,
     marginBottom: 80,
-    color: COLORS.BLACK,
-  },
-  fieldLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 10,
-    marginHorizontal: 22,
     color: COLORS.BLACK,
   },
   buttonWrapper: {

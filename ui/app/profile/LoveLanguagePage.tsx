@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import BackButton from '@/components/BackButton';
 import CompleteButton from '@/components/CompleteButton';
+import PopupWindow from '@/components/PopupWindow';
 import COLORS from '@/constants/colors';
 import api from '@/lib/api';
 import { useRouter } from 'expo-router';
@@ -26,6 +27,8 @@ const LANGUAGES = [
 
 export default function LoveLanguagePage() {
   const [selectedOrder, setSelectedOrder] = useState<string[]>([]);
+  const [showPopup, setShowPopup] = useState(false);
+  const handlePopupClose = () => setShowPopup(false);
   const router = useRouter();
 
   const toggleSelection = (language: string) => {
@@ -46,11 +49,10 @@ export default function LoveLanguagePage() {
 
   const handleSubmit = async () => {
     if (selectedOrder.length < 5) {
-      Alert.alert('Please rank all 5 items.');
+      setShowPopup(true);
       return;
     }
 
-    // 점수 매핑 부분 수정
     const scores = Array(5).fill(0);
     selectedOrder.forEach((language, index) => {
       const score = 5 - index;
@@ -58,18 +60,18 @@ export default function LoveLanguagePage() {
       scores[langIndex] = score;
     });
 
-    console.log('전송할 점수:', scores);
+    console.log('score:', scores);
 
     try {
       await api.post('/user/lovelanguage/score', {
         answers: scores,
       });
 
-      Alert.alert('success', '러브랭귀지 결과가 저장되었습니다.');
+      Alert.alert('success', 'saved LoveLanguage');
       router.push('/profile/SeriousnessPage');
     } catch (err: any) {
       console.error('❌ error:', err.response?.data || err.message);
-      Alert.alert('error', '저장 중 오류가 발생했습니다.');
+      Alert.alert('error', 'error');
     }
   };
 
@@ -108,6 +110,14 @@ export default function LoveLanguagePage() {
       <View style={styles.buttonWrapper}>
         <CompleteButton title="Next" onPress={handleSubmit} />
       </View>
+
+      <PopupWindow
+        visible={showPopup}
+        title="Error"
+        message="Please select everything."
+        onCancel={handlePopupClose}
+        onConfirm={handlePopupClose}
+      />
     </SafeAreaView>
   );
 }

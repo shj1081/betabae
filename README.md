@@ -1,5 +1,12 @@
 # Betabae
 
+## Team Members
+- [mjayJeong](github.com/mjayJeong) - Frontend Developer
+  - second account: [zaiJeong](github.com/zaiJeong)
+- [shj1081](github.com/shj1081) - Backend Developer
+- [racheliee](github.com/racheliee) - Backend Developer
+- [ibyeol21](github.com/ibyeol21)
+
 ## Tech Stacks
 
 - Frontend: React Native (TypeScript)
@@ -71,6 +78,10 @@ make prisma-migrate
 
 ```bash
 make dev
+
+# or to manually run the backend server
+cd backend
+yarn start:dev
 ```
 
 ## Make Commands for Development
@@ -97,3 +108,16 @@ make dev
 
 - `make clean`: Clean up project (remove Docker volumes, build files, node_modules)
 - `fast-setup`: Setup local environment in oneshot command (for first run)
+
+## Running the frontend
+To run the frontend, you need to set up the React Native environment. Run the following commands in the `app/frontend` directory:
+```bash
+cd ui
+npm install
+npm run start # then choose the platform (iOS/Android/Web) to run the app)
+```
+
+```[!NOTE]
+The frontend runs on port 8081 for the web version, and the mobile versions will run on their respective ports (e.g., Metro Bundler for React Native).
+```
+

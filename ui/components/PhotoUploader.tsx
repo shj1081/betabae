@@ -4,14 +4,12 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import COLORS from '@/constants/colors';
 
 const MAX_PHOTOS = 6;
-const BOX_SIZE = (Dimensions.get('window').width - 60) / 3;
 
 interface Props {
   onPhotosChange: (photos: ImagePicker.ImagePickerAsset[]) => void;
@@ -32,7 +30,7 @@ const PhotoUploader = ({ onPhotosChange }: Props) => {
 
     if (!result.canceled && result.assets && result.assets[0].uri) {
       const updated = [...photos];
-      updated[index] = result.assets[0]; 
+      updated[index] = result.assets[0];
       setPhotos(updated);
 
       const validAssets = updated.filter(Boolean) as ImagePicker.ImagePickerAsset[];
@@ -66,20 +64,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginHorizontal: 22,
+    paddingHorizontal: 22,
     marginTop: 20,
   },
   photoBox: {
-    width: BOX_SIZE,
-    height: BOX_SIZE,
+    width: '30%', 
+    aspectRatio: 1, 
     marginBottom: 15,
     borderWidth: 2,
     borderColor: COLORS.BLACK,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
     backgroundColor: COLORS.WHITE,
+    overflow: 'hidden',
   },
   image: {
     width: '100%',

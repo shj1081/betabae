@@ -1,11 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, Alert, Image, Platform } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  Alert,
+  Image,
+  Platform,
+  TouchableOpacity,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import Swiper from 'react-native-deck-swiper';
 import BottomTabBar from '@/components/BottomTabBar';
 import LikabilityBar from '@/components/LikabilityBar';
 import COLORS from '@/constants/colors';
 import api from '@/lib/api';
+import PopupWindow from '@/components/PopupWindow';
+import { useMatchStore } from '@/store/matchStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface FeedUser {
   id: number;
@@ -25,12 +37,16 @@ export default function MatchingPage() {
   const [cards, setCards] = useState<FeedUser[]>([]);
   const [feedbackText, setFeedbackText] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
+  const [isGuideVisible, setIsGuideVisible] = useState(false);
+
+  const swiperRef = useRef<Swiper<FeedUser>>(null);
+
+  const { setSelectedUserId } = useMatchStore(); 
 
   useEffect(() => {
     const fetchFeed = async () => {
       try {
         const res = await api.get('/feed');
-        console.log('🧾 Feed response:', res.data.users);
         setCards(res.data.users);
       } catch (err) {
         console.error('❌ Feed fetch error:', err);
@@ -46,13 +62,21 @@ export default function MatchingPage() {
     setTimeout(() => setShowFeedback(false), 500);
   };
 
-  const onSwipedTop = (cardIndex: number) => {
+  const onSwipedTop = async (cardIndex: number) => {
     const user = cards[cardIndex];
     console.log('🔍 Profile detail:', user);
-    router.push({
-      pathname: `/match/user/${user.id}`,
-      state: { score: user.compatibilityScore },
-    });
+
+    setSelectedUserId(user.id);
+    await AsyncStorage.setItem('lastMatchUserId', String(user.id));
+    router.push('/match/UserProfileDetailPage'); 
+
+    setTimeout(() => {
+      setCards((prev) => {
+        const newArr = [...prev];
+        newArr.splice(cardIndex, 0, user);
+        return newArr;
+      });
+    }, 0);
   };
 
   const onSwipedRight = async (cardIndex: number) => {
@@ -63,39 +87,69 @@ export default function MatchingPage() {
       const response = await api.post('/match', {
         requestedId: likedUser.id,
       });
-      console.log('✅ Match created:', response.data);
       Alert.alert('Like!', `${likedUser.nickname}님을 좋아요했어요`);
     } catch (err: any) {
       console.error('❌ Match create error:', err.response?.data || err.message);
-      Alert.alert('에러', err.response?.data?.message || '요청 실패');
+      Alert.alert('Error', err.response?.data?.message || 'Request failed');
     }
   };
 
   const onSwipedLeft = (cardIndex: number) => {
     showFeedbackMessage('Pass 😥');
-    console.log('Pass..');
     Alert.alert('Pass!', `${cards[cardIndex]?.nickname}님을 넘겼어요`);
   };
 
   const onSwipedBottom = (cardIndex: number) => {
-    console.log('Info!');
     Alert.alert('Info', `${cards[cardIndex]?.nickname}님의 정보를 확인합니다`);
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>📌 Today's Pick</Text>
+      <View style={styles.headerContainer}>
+        <Text style={styles.title}>📌 Today's Pick</Text>
+        <TouchableOpacity
+          style={styles.questionButton}
+          onPress={() => setIsGuideVisible(true)}
+        >
+          <Text style={styles.questionText}>?</Text>
+        </TouchableOpacity>
+      </View>
+
+      <PopupWindow
+        visible={isGuideVisible}
+        title="Match Guide"
+        message={
+          'Swipe ⬅️ : Pass\n' +
+          'Swipe ➡️ : Like\n' +
+          'Swipe ⬆️ : View Detailed Info'
+        }
+        onCancel={() => setIsGuideVisible(false)}
+        onConfirm={() => setIsGuideVisible(false)}
+      />
 
       <View style={styles.swiperWrapper}>
         <Swiper
+          ref={swiperRef}
           cards={cards}
           renderCard={(card) =>
             card ? (
               <View style={styles.card}>
                 {card.profileImageUrl ? (
-                  <Image source={{ uri: card.profileImageUrl }} style={styles.avatar} />
+                  <Image
+                    source={{ uri: card.profileImageUrl }}
+                    style={styles.avatar}
+                  />
                 ) : (
-                  <View style={[styles.avatar, { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' }]}>
+                  <View
+                    style={[
+                      styles.avatar,
+                      {
+                        backgroundColor: '#eee',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      },
+                    ]}
+                  >
                     <Text>No Image</Text>
                   </View>
                 )}
@@ -129,6 +183,7 @@ export default function MatchingPage() {
           swipeThreshold={Platform.OS === 'web' ? 30 : 80}
           cardHorizontalMargin={0}
         />
+
         {showFeedback && (
           <View style={styles.feedbackContainer}>
             <Text style={styles.feedbackText}>{feedbackText}</Text>
@@ -140,17 +195,39 @@ export default function MatchingPage() {
   );
 }
 
+const { width, height } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 30,
     backgroundColor: COLORS.WHITE,
   },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 22,
+    marginBottom: 10,
+  },
   title: {
+    flex: 1,
     fontSize: 30,
     fontWeight: '600',
-    marginHorizontal: 22,
     color: COLORS.BLACK,
+  },
+  questionButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.LIGHT_GRAY,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  questionText: {
+    fontSize: 20,
+    color: COLORS.DARK_GRAY,
+    fontWeight: '600',
   },
   swiperWrapper: {
     flex: 1,

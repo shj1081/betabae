@@ -14,6 +14,8 @@ import COLORS from '@/constants/colors';
 import { useRouter } from 'expo-router';
 import api from '@/lib/api';
 import { connectSocket } from '@/lib/socket';
+import { useChatStore } from '@/store/chatStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ChatPartner {
   conversationId: string;
@@ -110,6 +112,12 @@ export default function ChatPage() {
     return `${year}-${month}-${day} ${ampm} ${hour12}:${minutes}`;
   };
 
+  const enterChatRoom = async (convId: string) => {
+    useChatStore.getState().setConversationId(convId);
+    await AsyncStorage.setItem('lastConversationId', convId);
+    router.push('/chat/ChatRoomPage'); 
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Chat</Text>
@@ -122,7 +130,7 @@ export default function ChatPage() {
             <TouchableOpacity
               key={conv.conversationId}
               style={styles.chatCard}
-              onPress={() => router.push(`/chat/chatroom/${conv.conversationId}`)}
+              onPress={() => enterChatRoom(conv.conversationId)}
             >
               <View style={styles.leftRow}>
                 <Image
