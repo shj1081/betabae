@@ -9671,7 +9671,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"socks@npm:^2.8.5":
+"socks@npm:^2.8.3":
   version: 2.8.5
   resolution: "socks@npm:2.8.5"
   dependencies:
