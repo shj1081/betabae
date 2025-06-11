@@ -1,11 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
 import BottomTabBar from '@/components/BottomTabBar';
 import COLORS from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import PopupWindow from '@/components/PopupWindow';
 import api from '@/lib/api';
+import { useMatchStore } from '@/store/matchStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -13,15 +23,16 @@ export default function ProfilePage() {
     nickname: string;
     profile_image_url: string | null;
   } | null>(null);
-
+  const [userId, setUserId] = useState<number | null>(null); 
   const [loading, setLoading] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const { setSelectedUserId } = useMatchStore();
 
   const handleLogout = async () => {
     try {
       const response = await api.post('/auth/logout');
       console.log('Logout success', response.data.message);
-
       router.replace('/auth/LoginPage');
     } catch (error: any) {
       console.error('Logout failed', error.response?.data || error.message);
@@ -32,6 +43,7 @@ export default function ProfilePage() {
     try {
       const response = await api.get('/user/profile');
       setProfile(response.data.profile);
+      setUserId(response.data.user?.id); 
     } catch (error: any) {
       console.error('Failed to load profile:', error.response?.data || error.message);
     } finally {
@@ -42,6 +54,13 @@ export default function ProfilePage() {
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  const handleProfilePreview = async () => {
+    if (!userId) return;
+    setSelectedUserId(userId);
+    await AsyncStorage.setItem('lastMatchUserId', String(userId));
+    router.push('/match/UserProfileDetailPage'); 
+  };
 
   if (loading) {
     return (
@@ -58,16 +77,30 @@ export default function ProfilePage() {
 
         <View style={styles.profileRow}>
           <Image
-            source={{ uri: profile?.profile_image_url || 'https://via.placeholder.com/100' }}
+            source={{
+              uri: profile?.profile_image_url || 'https://via.placeholder.com/100',
+            }}
             style={styles.avatar}
           />
           <Text style={styles.username}>{profile?.nickname || 'Unknown'}</Text>
         </View>
 
         <View style={styles.menuWrapper}>
-          <MenuItem icon="create-outline" label="Edit profile" onPress={() => router.push('/profile/SignupBasicPage')} />
-          <MenuItem icon="eye-outline" label="Profile Preview" onPress={() => {}} />
-          <MenuItem icon="settings-outline" label="Settings" onPress={() => router.push('/setting/SettingsPage')} />
+          <MenuItem
+            icon="create-outline"
+            label="Edit profile"
+            onPress={() => router.push('/profile/SignupBasicPage')}
+          />
+          <MenuItem
+            icon="eye-outline"
+            label="Profile Preview"
+            onPress={handleProfilePreview} 
+          />
+          <MenuItem
+            icon="settings-outline"
+            label="Settings"
+            onPress={() => router.push('/setting/SettingsPage')}
+          />
         </View>
 
         <TouchableOpacity onPress={() => setShowLogoutModal(true)}>
