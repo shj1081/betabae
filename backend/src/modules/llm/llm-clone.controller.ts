@@ -3,7 +3,7 @@ import {
   BetaBaeCreateRequestDto,
   BetaBaeUpdateRequestDto,
 } from 'src/modules/llm/dto/betabae-clone.dto';
-import { LlmCloneService } from 'src/modules/llm/llm-clone.service';
+import { BetaBaeMessageRequest, LlmCloneService } from 'src/modules/llm/llm-clone.service';
 import { AuthenticatedRequest } from 'src/modules/types/authenticated-request.interface';
 
 @Controller('llm-clone')
@@ -23,5 +23,56 @@ export class LlmCloneController {
   @Post('update')
   async updateBetaBae(@Req() req: AuthenticatedRequest, @Body() body: BetaBaeUpdateRequestDto) {
     await this.llmCloneService.updateBetaBae(req.user.id, body);
+  }
+
+  @Post('response')
+  async getBetaBaeResponse(@Req() req: AuthenticatedRequest, @Body() body: BetaBaeMessageRequest) {
+    return await this.llmCloneService.getBetaBaeResponse(req.user.id, body);
+  }
+
+  @Post('real-bae-thought')
+  async getRealBaeThoughtResponse(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: { messageText: string; contextText: string; matchId: number },
+  ) {
+    return await this.llmCloneService.getRealBaeThoughtResponse(
+      body.messageText,
+      req.user.id,
+      body.contextText,
+      body.matchId,
+    );
+  }
+
+  // Testing purpose APIs
+  @Post('test-create')
+  async testCreateBetaBae(@Body() body: BetaBaeCreateRequestDto & { userId: number }) {
+    await this.llmCloneService.createBetaBae(body.userId, body);
+  }
+
+  @Post('test-delete')
+  async testDeleteBetaBae(@Body() body: { userId: number }) {
+    await this.llmCloneService.deleteBetaBae(body.userId);
+  }
+
+  @Post('test-update')
+  async testUpdateBetaBae(@Body() body: BetaBaeUpdateRequestDto & { userId: number }) {
+    await this.llmCloneService.updateBetaBae(body.userId, body);
+  }
+
+  @Post('test-response')
+  async testGetBetaBaeResponse(@Body() body: BetaBaeMessageRequest & { userId: number }) {
+    return await this.llmCloneService.getBetaBaeResponse(body.userId, body);
+  }
+
+  @Post('test-real-bae-thought')
+  async testGetRealBaeThoughtResponse(
+    @Body() body: { userId: number; messageText: string; contextText: string; matchId: number },
+  ) {
+    return await this.llmCloneService.getRealBaeThoughtResponse(
+      body.messageText,
+      body.userId,
+      body.contextText,
+      body.matchId,
+    );
   }
 }

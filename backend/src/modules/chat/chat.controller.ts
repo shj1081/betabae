@@ -23,10 +23,7 @@ import {
   SendImageMessageDto,
   SendMessageDto,
 } from 'src/dto/chat/message.request.dto';
-import {
-  MessageListResponseDto,
-  MessageResponseDto,
-} from 'src/dto/chat/message.response.dto';
+import { MessageListResponseDto, MessageResponseDto } from 'src/dto/chat/message.response.dto';
 import { ErrorResponseDto } from 'src/dto/common/error.response.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { ChatGateway } from './chat.gateway';
@@ -47,7 +44,7 @@ export class ChatController {
     @Query('type') type: string,
   ): Promise<ConversationListResponseDto> {
     let conversationType: ConversationType | undefined;
-    
+
     if (type) {
       if (type.toLowerCase() === 'betabae') {
         conversationType = ConversationType.BETA_BAE;
@@ -56,9 +53,11 @@ export class ChatController {
       }
       // If 'all' or any other value, leave conversationType as undefined
     }
-    
-    const { conversations, totalUnreadCount } =
-      await this.chatService.getConversations(Number(r['user'].id), conversationType);
+
+    const { conversations, totalUnreadCount } = await this.chatService.getConversations(
+      Number(r['user'].id),
+      conversationType,
+    );
     return new ConversationListResponseDto(conversations, totalUnreadCount);
   }
 
@@ -84,11 +83,7 @@ export class ChatController {
     @Body() dto: SendMessageDto,
   ): Promise<{ ok: boolean; message: MessageResponseDto }> {
     // Create a message directly through the service
-    const message = await this.chatService.createText(
-      Number(r['user'].id),
-      cid,
-      dto.messageText,
-    );
+    const message = await this.chatService.createText(Number(r['user'].id), cid, dto.messageText);
 
     // Broadcast the message through the gateway
     await this.chatGateway.broadcast(cid, message);
@@ -118,7 +113,7 @@ export class ChatController {
     await this.chatGateway.broadcast(cid, message);
     return { ok: true, message };
   }
-  
+
   @Post(':cid/messages/file')
   @UseInterceptors(FileInterceptor('file'))
   async sendFileMessage(

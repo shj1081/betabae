@@ -1,14 +1,7 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConversationType } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
-import {
-  ChatPartnerDto,
-  ConversationResponseDto,
-} from 'src/dto/chat/conversation.response.dto';
+import { ChatPartnerDto, ConversationResponseDto } from 'src/dto/chat/conversation.response.dto';
 import {
   MessageAttachmentDto,
   MessageResponseDto,
@@ -43,10 +36,7 @@ export class ChatService {
           // user_specific_id가 userId 인 경우 상대방이 생성한 beta_bae 채팅방이므로 제외
           // user_specific_id가 userId가 아닌 경우나 null인 경우만 가져오기
           where: {
-            OR: [
-              { user_specific_id: { not: userId } },
-              { user_specific_id: null },
-            ],
+            OR: [{ user_specific_id: { not: userId } }, { user_specific_id: null }],
             ...(type ? { type } : {}),
           },
           orderBy: { updated_at: 'desc' },
@@ -71,15 +61,11 @@ export class ChatService {
     const conversations = matches
       .flatMap((match) => match.conversations)
       .map((conv) => {
-        const match = matches.find((m) =>
-          m.conversations.some((c) => c.id === conv.id),
-        );
+        const match = matches.find((m) => m.conversations.some((c) => c.id === conv.id));
         if (!match) return null;
 
         const profile =
-          match.requester_id === userId
-            ? match.requested.profile
-            : match.requester.profile;
+          match.requester_id === userId ? match.requested.profile : match.requester.profile;
         if (!profile) return null;
 
         const chatPartner = plainToInstance(ChatPartnerDto, {
@@ -101,9 +87,7 @@ export class ChatService {
           type: conv.type,
           chatPartner,
           unreadCount: parseInt(
-            unreadCounts[idx] && unreadCounts[idx][1]
-              ? String(unreadCounts[idx++][1])
-              : '0',
+            unreadCounts[idx] && unreadCounts[idx][1] ? String(unreadCounts[idx++][1]) : '0',
             10,
           ),
           lastMessage,
@@ -113,13 +97,8 @@ export class ChatService {
       });
 
     // Filter out null values and calculate total unread count
-    const filteredConversations = conversations.filter(
-      (c) => c !== null,
-    ) as ConversationResponseDto[];
-    const totalUnreadCount = filteredConversations.reduce(
-      (sum, c) => sum + c.unreadCount,
-      0,
-    );
+    const filteredConversations = conversations.filter((c) => c !== null);
+    const totalUnreadCount = filteredConversations.reduce((sum, c) => sum + c.unreadCount, 0);
     return { conversations: filteredConversations, totalUnreadCount };
   }
 
@@ -131,12 +110,7 @@ export class ChatService {
    * @param before Message ID to fetch before
    * @returns List of messages
    */
-  async getMessages(
-    userId: number,
-    conversationId: number,
-    limit = 30,
-    before?: number,
-  ) {
+  async getMessages(userId: number, conversationId: number, limit = 30, before?: number) {
     await this.assertAccess(userId, conversationId);
 
     const messages = await this.prisma.message.findMany({
@@ -161,10 +135,7 @@ export class ChatService {
    * @returns Created message
    */
   async createText(senderId: number, conversationId: number, text: string) {
-    const { requester_id, requested_id } = await this.assertAccess(
-      senderId,
-      conversationId,
-    );
+    const { requester_id, requested_id } = await this.assertAccess(senderId, conversationId);
 
     const recipientId = senderId === requester_id ? requested_id : requester_id;
 
@@ -189,6 +160,35 @@ export class ChatService {
     });
 
     await this.redis.incr(`unread:${recipientId}:${conversationId}`);
+
+    if (message.conversation.type === 'BETA_BAE') {
+      const redisKey = `messages:${conversationId}`;
+      const existing = await this.redis.get(redisKey);
+
+      let conversationInfo: {
+        partnerId: number;
+        messages: { sender_id: number; message_text: string }[];
+      };
+
+      if (existing) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          conversationInfo = JSON.parse(existing);
+        } catch {
+          conversationInfo = { partnerId: recipientId, messages: [] };
+        }
+      } else {
+        // First message of the convo — decide who the partner is (LLM clone target)
+        conversationInfo = { partnerId: recipientId, messages: [] };
+      }
+
+      conversationInfo.messages.push({
+        sender_id: senderId,
+        message_text: text,
+      });
+
+      await this.redis.set(redisKey, JSON.stringify(conversationInfo));
+    }
     return this.mapMessageToDto(message);
   }
 
@@ -216,16 +216,10 @@ export class ChatService {
     });
 
     if (conv && conv.type === ConversationType.BETA_BAE)
-      throw new BadRequestException(
-        new ErrorResponseDto('Image not allowed for BETA_BAE'),
-      );
+      throw new BadRequestException(new ErrorResponseDto('Image not allowed for BETA_BAE'));
 
     const media = await this.fileSrv.uploadFile(file, 'chat-image');
-    const textMessage = await this.createText(
-      senderId,
-      conversationId,
-      messageText ?? '',
-    );
+    const textMessage = await this.createText(senderId, conversationId, messageText ?? '');
 
     const updatedMessage = await this.prisma.message.update({
       where: { id: textMessage.messageId },
@@ -259,11 +253,9 @@ export class ChatService {
     // Get conversation details to check if it's BETA_BAE
     const conv = await this.getConversationDetails(conversationId);
     if (!conv) {
-      throw new NotFoundException(
-        new ErrorResponseDto('Conversation not found'),
-      );
+      throw new NotFoundException(new ErrorResponseDto('Conversation not found'));
     }
-    
+
     if (conv.type === ConversationType.BETA_BAE) {
       throw new BadRequestException(
         new ErrorResponseDto('File attachments not allowed for BETA_BAE'),
@@ -332,10 +324,7 @@ export class ChatService {
       where: { id: conversationId },
       include: { match: true },
     });
-    if (!conv)
-      throw new NotFoundException(
-        new ErrorResponseDto('Conversation not found'),
-      );
+    if (!conv) throw new NotFoundException(new ErrorResponseDto('Conversation not found'));
 
     return {
       requesterUserId: conv.match.requester_id,
@@ -388,16 +377,11 @@ export class ChatService {
       where: { id: conversationId },
       include: { match: true },
     });
-    if (!conv)
-      throw new NotFoundException(
-        new ErrorResponseDto('Conversation not found'),
-      );
+    if (!conv) throw new NotFoundException(new ErrorResponseDto('Conversation not found'));
 
     const { requester_id, requested_id } = conv.match;
     if (userId !== 0 && userId !== requester_id && userId !== requested_id)
-      throw new BadRequestException(
-        new ErrorResponseDto('No access to this conversation'),
-      );
+      throw new BadRequestException(new ErrorResponseDto('No access to this conversation'));
 
     // Return match object for further processing
     return {

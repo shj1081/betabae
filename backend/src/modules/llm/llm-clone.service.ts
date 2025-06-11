@@ -2,13 +2,21 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { BetaBaeClone } from '@prisma/client';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 import { CHOSEN_LLM_MODEL } from 'src/modules/llm/constants/config';
-import { BETABAE_CREATION_PROMPT } from 'src/modules/llm/constants/prompt';
+import {
+  BETABAE_CREATION_PROMPT,
+  BETABAE_RESPONSE_PROMPT,
+  REALBAE_THOUGHT_ROMPT,
+} from 'src/modules/llm/constants/prompt';
 import {
   BetaBaeCreateRequestDto,
   BetaBaeUpdateRequestDto,
 } from 'src/modules/llm/dto/betabae-clone.dto';
 import { LLMModel } from 'src/modules/llm/enums/llm.enums';
+import { ClaudeProvider } from 'src/modules/llm/providers/claude.provider';
+import { DeepSeekProvider } from 'src/modules/llm/providers/deepseek.provider';
+import { GeminiProvider } from 'src/modules/llm/providers/gemini.provider';
 import {
+  LLMMessageContext,
   LLMProviderBaseService,
   LoveLanguageContext,
   PersonalityContext,
@@ -16,18 +24,39 @@ import {
 } from 'src/modules/llm/providers/llm-provider-base.service';
 import { OpenAIProvider } from 'src/modules/llm/providers/openai.provider';
 
+export interface MessageRequestContext {
+  role: 'user' | 'partner';
+  content: string;
+}
+
+export interface BetaBaeMessageRequest {
+  messages: MessageRequestContext[];
+  partnerId: number;
+}
+
 @Injectable()
 export class LlmCloneService {
   private readonly llmProvider: LLMProviderBaseService;
   constructor(
     private prisma: PrismaService,
     private readonly openAIProvider: OpenAIProvider,
+    private readonly claudeProvider: ClaudeProvider,
+    private readonly geminiProvider: GeminiProvider,
+    private readonly deepSeekProvider: DeepSeekProvider,
   ) {
     switch (CHOSEN_LLM_MODEL) {
       case LLMModel.OPEN_AI:
         this.llmProvider = this.openAIProvider;
         break;
-      // todo: Add other LLM providers here
+      case LLMModel.CLAUDE:
+        this.llmProvider = this.claudeProvider;
+        break;
+      case LLMModel.GEMINI:
+        this.llmProvider = this.geminiProvider;
+        break;
+      case LLMModel.DEEPSEEK:
+        this.llmProvider = this.deepSeekProvider;
+        break;
     }
   }
 
@@ -160,36 +189,152 @@ export class LlmCloneService {
     return;
   }
 
-  /**
-   * Get answer from LLM for a user message
-   * @param userMessage The message from the user
-   * @returns The bot's response message
-   */
-  async getBotResponse(userMessage: string): Promise<string> {
-    // Get response from LLM
-    return await this.getAnswerFromBot(userMessage);
-  }
-
-  /**
-   * Get answer from LLM
-   * @param userMessage The message from the user
-   * @returns The bot's response
-   */
-  async getAnswerFromBot(userMessage: string): Promise<string> {
-    // todo: Implement the logic to get the answer from the LLM; added this for lint
-    await this.prisma.betaBaeClone.findFirst({
-      where: { user_context: { contains: userMessage } },
+  async getBetaBaeResponse(
+    userId: number,
+    { partnerId, messages }: BetaBaeMessageRequest,
+  ): Promise<string> {
+    const partnerClone = await this.prisma.betaBaeClone.findUnique({
+      where: { user_id: partnerId },
     });
 
-    const response = {
-      choices: [
-        {
-          message: {
-            content: `This is a mock response from the LLM to ${userMessage}.`,
+    if (!partnerClone) {
+      throw new BadRequestException('Beta clone does not exist for this user');
+    }
+
+    // Convert to LLM format
+    const llmMessages: LLMMessageContext[] = messages.map((msg) => ({
+      role: msg.role === 'partner' ? 'assistant' : 'user',
+      content: msg.content,
+    }));
+
+    const systemPrompt: LLMMessageContext = {
+      role: 'system',
+      content: BETABAE_RESPONSE_PROMPT(partnerClone.user_context, ''),
+    };
+
+    const response = await this.llmProvider.getLLMResponse([systemPrompt, ...llmMessages]);
+
+    return response;
+  }
+
+  async getRealBaeThoughtResponse(
+    message: string,
+    userId: number,
+    contextMessages: string,
+    matchId: number,
+  ): Promise<string> {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: {
+        requester: {
+          include: {
+            profile: true,
+            loveLanguage: true,
+            personality: true,
           },
         },
-      ],
+        requested: {
+          include: {
+            profile: true,
+            loveLanguage: true,
+            personality: true,
+          },
+        },
+      },
+    });
+
+    if (!match) throw new BadRequestException('Match not found');
+
+    console.log('Match found:', match);
+
+    const isUserRequester = match.requester_id === userId;
+    const user = isUserRequester ? match.requester : match.requested;
+    const partner = isUserRequester ? match.requested : match.requester;
+
+    if (
+      !user.profile ||
+      !user.loveLanguage ||
+      !user.personality ||
+      !partner.profile ||
+      !partner.loveLanguage ||
+      !partner.personality
+    ) {
+      console.log('user profile:', user.profile);
+      console.log('partner profile:', partner.profile);
+      console.log('user love language:', user.loveLanguage);
+      console.log('partner love language:', partner.loveLanguage);
+      console.log('user personality:', user.personality);
+      console.log('partner personality:', partner.personality);
+
+      throw new BadRequestException('Incomplete user or match data');
+    }
+
+    const userContext: UserContext = {
+      name: user.profile.nickname,
+      birthday: user.profile.birthday.toISOString().split('T')[0],
+      gender: user.profile.gender,
+      city: user.profile.city,
+      interests: user.profile.interests,
+      mbti: user.profile.mbti ?? undefined,
     };
-    return response.choices[0]?.message?.content || '죄송합니다. 답변을 찾을 수 없습니다.';
+
+    const partnerContext: UserContext = {
+      name: partner.profile.nickname,
+      birthday: partner.profile.birthday.toISOString().split('T')[0],
+      gender: partner.profile.gender,
+      city: partner.profile.city,
+      interests: partner.profile.interests,
+      mbti: partner.profile.mbti ?? undefined,
+    };
+
+    const userPersonality: PersonalityContext = {
+      openness: user.personality.openness,
+      conscientiousness: user.personality.conscientiousness,
+      extraversion: user.personality.extraversion,
+      agreeableness: user.personality.agreeableness,
+      neuroticism: user.personality.neuroticism,
+    };
+
+    const partnerPersonality: PersonalityContext = {
+      openness: partner.personality.openness,
+      conscientiousness: partner.personality.conscientiousness,
+      extraversion: partner.personality.extraversion,
+      agreeableness: partner.personality.agreeableness,
+      neuroticism: partner.personality.neuroticism,
+    };
+
+    const userLoveLanguage: LoveLanguageContext = {
+      wordsOfAffirmation: user.loveLanguage.words_of_affirmation,
+      actsOfService: user.loveLanguage.acts_of_service,
+      receivingGifts: user.loveLanguage.receiving_gifts,
+      qualityTime: user.loveLanguage.quality_time,
+      physicalTouch: user.loveLanguage.physical_touch,
+    };
+
+    const partnerLoveLanguage: LoveLanguageContext = {
+      wordsOfAffirmation: partner.loveLanguage.words_of_affirmation,
+      actsOfService: partner.loveLanguage.acts_of_service,
+      receivingGifts: partner.loveLanguage.receiving_gifts,
+      qualityTime: partner.loveLanguage.quality_time,
+      physicalTouch: partner.loveLanguage.physical_touch,
+    };
+
+    const prompt = REALBAE_THOUGHT_ROMPT(
+      contextMessages.split('\n'),
+      message,
+      userContext,
+      userPersonality,
+      userLoveLanguage,
+      partnerContext,
+      partnerPersonality,
+      partnerLoveLanguage,
+    );
+
+    const response = await this.llmProvider.getLLMResponse([
+      { role: 'system', content: prompt },
+      { role: 'user', content: message },
+    ]);
+
+    return response;
   }
 }
