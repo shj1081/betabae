@@ -143,7 +143,7 @@ export class LlmCloneService {
       },
     });
 
-    this.logger.log(`Betabae clone created`)
+    this.logger.log(`Betabae clone created`);
 
     return;
   }
@@ -189,6 +189,8 @@ export class LlmCloneService {
       },
     });
 
+    this.logger.log(`Betabae clone updated for user ${userId}`);
+
     return;
   }
 
@@ -196,6 +198,12 @@ export class LlmCloneService {
     userId: number,
     { partnerId, messages }: BetaBaeMessageRequest,
   ): Promise<string> {
+    console.log('getBetaBaeResponse called with:', {
+      userId,
+      partnerId,
+      messages,
+    });
+
     const partnerClone = await this.prisma.betaBaeClone.findUnique({
       where: { user_id: partnerId },
     });
@@ -216,6 +224,8 @@ export class LlmCloneService {
     };
 
     const response = await this.llmProvider.getLLMResponse([systemPrompt, ...llmMessages]);
+
+    this.logger.log(`Beta Bae response generated for user ${userId}: ${response}`);
 
     return response;
   }
@@ -337,6 +347,8 @@ export class LlmCloneService {
       { role: 'system', content: prompt },
       { role: 'user', content: message },
     ]);
+
+    this.logger.log(`Real Bae thought response generated for user ${userId}: ${response}`);
 
     return response;
   }
