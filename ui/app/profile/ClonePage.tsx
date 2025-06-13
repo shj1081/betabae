@@ -62,8 +62,7 @@ export default function ClonePage() {
     }
 
     try {
-      await api.post("/llm-clone/test-create", {
-        userId: userId,
+      await api.post("/llm-clone/create", {
         sampleUserResponses: answers,
       });
 

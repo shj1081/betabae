@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { BetaBaeClone } from '@prisma/client';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 import { CHOSEN_LLM_MODEL } from 'src/modules/llm/constants/config';
@@ -37,6 +37,7 @@ export interface BetaBaeMessageRequest {
 @Injectable()
 export class LlmCloneService {
   private readonly llmProvider: LLMProviderBaseService;
+  private readonly logger = new Logger(LlmCloneService.name);
   constructor(
     private prisma: PrismaService,
     private readonly openAIProvider: OpenAIProvider,
@@ -141,6 +142,8 @@ export class LlmCloneService {
         user_context: await this.getSummary(userId, sampleUserResponses),
       },
     });
+
+    this.logger.log(`Betabae clone created`)
 
     return;
   }
