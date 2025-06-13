@@ -265,8 +265,6 @@ export class LlmCloneService {
 
     if (!match) throw new BadRequestException('Match not found');
 
-    console.log('Match found:', match);
-
     const isUserRequester = match.requester_id === userId;
     const user = isUserRequester ? match.requester : match.requested;
     const partner = isUserRequester ? match.requested : match.requester;
@@ -359,6 +357,8 @@ export class LlmCloneService {
       return `${role}: ${msg.message_text}`;
     });
 
+    console.log('contextMessages:', contextMessages);
+
     const prompt = REALBAE_THOUGHT_ROMPT(
       contextMessages,
       messageText,
@@ -404,8 +404,6 @@ export class LlmCloneService {
     });
 
     if (!match) throw new BadRequestException('Match not found');
-
-    console.log('Match found:', match);
 
     const isUserRequester = match.requester_id === userId;
     const user = isUserRequester ? match.requester : match.requested;
