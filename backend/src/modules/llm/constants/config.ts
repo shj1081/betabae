@@ -1,3 +1,3 @@
 import { LLMModel } from 'src/modules/llm/enums/llm.enums';
 
-export const CHOSEN_LLM_MODEL: LLMModel = LLMModel.GEMINI;
+export const CHOSEN_LLM_MODEL: LLMModel = LLMModel.DEEPSEEK;

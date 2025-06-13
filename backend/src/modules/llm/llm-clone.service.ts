@@ -198,12 +198,6 @@ export class LlmCloneService {
     userId: number,
     { partnerId, messages }: BetaBaeMessageRequest,
   ): Promise<string> {
-    console.log('getBetaBaeResponse called with:', {
-      userId,
-      partnerId,
-      messages,
-    });
-
     const partnerClone = await this.prisma.betaBaeClone.findUnique({
       where: { user_id: partnerId },
     });
