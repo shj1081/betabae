@@ -42,6 +42,8 @@ export default function ChatRoomPage() {
   const [pressedMessageId, setPressedMessageId] = useState<number | null>(null);
   const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
   const [isGuideVisible, setIsGuideVisible] = useState(false);
+  const [isAnalysisVisible, setIsAnalysisVisible] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState('');
 
   useEffect(() => {
     const restoreId = async () => {
@@ -167,21 +169,23 @@ export default function ChatRoomPage() {
     router.back();
   };
 
-  const formatDateTime = (iso: string) => {
-    const date = new Date(iso);
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-
-    let hours = date.getHours();
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-
-    hours = hours % 12;
-    hours = hours === 0 ? 12 : hours;
-
-    return `${yyyy}-${mm}-${dd} ${ampm} ${hours}:${minutes}`;
+const handleHeartClick = async (messageText: string) => {
+  if (!conversationId) return;
+  const payload = {
+    chatId: Number(conversationId),
+    messageText,
   };
+  console.log('request payload:', payload);
+  try {
+    const res = await api.post('/llm-clone/real-bae-thought', payload);
+    setAnalysisResult(res.data.response);
+    setIsAnalysisVisible(true);
+  } catch (err) {
+    console.error('Error:', err);
+    setAnalysisResult('Analyze error');
+    setIsAnalysisVisible(true);
+  }
+};
 
   return (
     <KeyboardAvoidingView
@@ -242,7 +246,7 @@ export default function ChatRoomPage() {
                   {isHovered && !isMine && (
                     <TouchableOpacity
                       style={styles.heartButton}
-                      onPress={() => console.log(`messageId: ${msg.messageId}`)}
+                      onPress={() => handleHeartClick(msg.messageText)}
                     >
                       <Text style={{ fontSize: 12 }}>❤️</Text>
                     </TouchableOpacity>
@@ -290,6 +294,15 @@ export default function ChatRoomPage() {
         onCancel={() => setIsGuideVisible(false)}
         onConfirm={() => setIsGuideVisible(false)}
       />
+
+      <PopupWindow
+        visible={isAnalysisVisible}
+        title="What is RealBae Thinking?"
+        message={analysisResult}
+        onCancel={() => setIsAnalysisVisible(false)}
+        onConfirm={() => setIsAnalysisVisible(false)}
+      />
+
     </KeyboardAvoidingView>
   );
 }
