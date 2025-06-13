@@ -75,13 +75,14 @@ The user has provided the following sample responses to messages:
 
 REQUIREMENTS:
 1. The response should be in the first person, as if the user is speaking.
-2. The response should be detailed enough to reflect the user's personality and preferences.
-3. Make sure to use the user's style of communication and respond to the message in a way that is consistent with the user's personality and preferences.
-4. Make the response sound natural and conversational, as if the user is speaking to a potential match on a dating app.
-5. The response should be concise and to the point, while still being engaging and interesting.
+2. The response should be concise and to the point, while still being engaging and interesting. Make them less than 10 words.
+3. The response should be detailed enough to reflect the user's personality and preferences.
+4. Make sure to use the user's style of communication and respond to the message in a way that is consistent with the user's personality and preferences.
+5. Make the response sound natural and conversational, as if the user is speaking to a potential match on a dating app.
+6. Do return an empty response if the user has not provided enough information to create a response. Create a question for the user to provide more information. For instance, "what are you doing this weekend?"
 
 OUTPUT FORMAT:
-The output should be a string in JSON format with the following structure. Do not include any additional text or code blocks:
+The output should be a string in JSON format with the following structure. Do not include any additional text or code fences:
 {
   "response": "<concise response to the user's message>",
 }
