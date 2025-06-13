@@ -1,4 +1,5 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { AuthGuard } from 'src/modules/auth/auth.guard';
 import {
   BetaBaeCreateRequestDto,
   BetaBaeUpdateRequestDto,
@@ -10,21 +11,22 @@ import { AuthenticatedRequest } from 'src/modules/types/authenticated-request.in
 export class LlmCloneController {
   constructor(private readonly llmCloneService: LlmCloneService) {}
 
+  @UseGuards(AuthGuard)
   @Post('create')
   async createBetaBae(@Req() req: AuthenticatedRequest, @Body() body: BetaBaeCreateRequestDto) {
     await this.llmCloneService.createBetaBae(req.user.id, body);
   }
-
+  @UseGuards(AuthGuard)
   @Post('delete')
   async deleteBetaBae(@Req() req: AuthenticatedRequest) {
     await this.llmCloneService.deleteBetaBae(req.user.id);
   }
-
+  @UseGuards(AuthGuard)
   @Post('update')
   async updateBetaBae(@Req() req: AuthenticatedRequest, @Body() body: BetaBaeUpdateRequestDto) {
     await this.llmCloneService.updateBetaBae(req.user.id, body);
   }
-
+  @UseGuards(AuthGuard)
   @Post('response')
   async getBetaBaeResponse(@Req() req: AuthenticatedRequest, @Body() body: BetaBaeMessageRequest) {
     return await this.llmCloneService.getBetaBaeResponse(req.user.id, body);
@@ -66,7 +68,13 @@ export class LlmCloneController {
 
   @Post('test-real-bae-thought')
   async testGetRealBaeThoughtResponse(
-    @Body() body: { userId: number; messageText: string; contextText: string; matchId: number },
+    @Body()
+    body: {
+      userId: number;
+      messageText: string;
+      contextText: string;
+      matchId: number;
+    },
   ) {
     return await this.llmCloneService.getRealBaeThoughtResponse(
       body.messageText,
