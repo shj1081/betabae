@@ -29,7 +29,7 @@ interface DeepSeekResponse {
 @Injectable()
 export class DeepSeekProvider extends LLMProviderBaseService {
   private readonly endpoint = 'https://api.together.xyz/v1/chat/completions';
-  private readonly model = DeepSeekModel.R1;
+  private readonly model = DeepSeekModel.V3;
   private readonly temperature = 0.7;
   private readonly maxTokens = 1024;
 
