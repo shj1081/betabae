@@ -154,7 +154,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         const botMsg = await this.chatSrv.createText(0, dto.cid, bot);
         // const bot = '[Beta Bae] This feature is under development.';
         // const botMsg = await this.chatSrv.createText(0, dto.cid, bot);
-        // await this.broadcast(dto.cid, botMsg);
+        await this.broadcast(dto.cid, botMsg);
       }
     } catch (error) {
       if (error instanceof Error) {
