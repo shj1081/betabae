@@ -23,10 +23,9 @@ interface GeminiRequest {
 interface GeminiResponse {
   candidates: Array<{
     content: {
-      parts: Array<{
-        text: string;
-      }>;
+      parts: Array<{ text: string }>;
     };
+    finishReason?: string;
   }>;
 }
 
@@ -36,6 +35,7 @@ export class GeminiProvider extends LLMProviderBaseService {
   private readonly model = GeminiModel.FLASH;
 
   async getLLMResponse(messages: LLMMessageContext[]): Promise<string> {
+    console.log('GeminiProvider.getLLMResponse called with messages:', messages);
     try {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) throw new Error('GEMINI_API_KEY not set');
@@ -57,7 +57,22 @@ export class GeminiProvider extends LLMProviderBaseService {
         },
       );
 
-      return response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? '';
+      console.log('Gemini API response:', response.data.candidates[0]?.content?.parts);
+      console.log(
+        'Gemini parts:',
+        JSON.stringify(response.data?.candidates?.[0]?.content?.parts, null, 2),
+      );
+
+      const parts = response.data?.candidates?.[0]?.content?.parts;
+      const text = parts?.length ? parts[0]?.text?.trim() : '';
+
+      if (!text) {
+        console.warn('Gemini response was missing expected text structure:', response.data);
+        return '';
+      }
+
+      console.log('Extracted text from Gemini response:', text);
+      return text;
     } catch (error) {
       console.error('Gemini API error:', error?.response?.data || error.message);
       throw new InternalServerErrorException('Failed to get response from Gemini');
