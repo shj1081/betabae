@@ -58,8 +58,24 @@ export class DeepSeekProvider extends LLMProviderBaseService {
         },
       );
 
-      const content = response.data?.choices?.[0]?.message?.content?.trim();
-      return content ?? '';
+      // const content = response.data?.choices?.[0]?.message?.content?.trim();
+      const raw = response.data?.choices?.[0]?.message?.content?.trim();
+
+      if (!raw) return '';
+
+      try {
+        // Find the JSON block inside the text
+        const match = raw.match(/{[\s\S]*}/); // matches the first JSON-like block
+        if (!match) return '';
+
+        const parsed: { response?: string } = JSON.parse(match[0]);
+        return parsed.response ?? '';
+      } catch {
+        console.error('Failed to parse JSON from DeepSeek response:', raw);
+        return '';
+      }
+
+      // return content ?? '';
     } catch (error) {
       console.error('DeepSeek API error:', error?.response?.data || error.message);
       throw new InternalServerErrorException('Failed to get response from DeepSeek');
