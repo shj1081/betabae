@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { BetaBaeClone } from '@prisma/client';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
+import { RedisService } from 'src/infra/redis/redis.service';
 import { CHOSEN_LLM_MODEL } from 'src/modules/llm/constants/config';
 import {
   BETABAE_CREATION_PROMPT,
@@ -11,6 +12,10 @@ import {
   BetaBaeCreateRequestDto,
   BetaBaeUpdateRequestDto,
 } from 'src/modules/llm/dto/betabae-clone.dto';
+import {
+  RealBaeThoughtRequestDto,
+  RealBaeThoughtResponseDto,
+} from 'src/modules/llm/dto/realbae-thought.dto';
 import { LLMModel } from 'src/modules/llm/enums/llm.enums';
 import { ClaudeProvider } from 'src/modules/llm/providers/claude.provider';
 import { DeepSeekProvider } from 'src/modules/llm/providers/deepseek.provider';
@@ -44,6 +49,7 @@ export class LlmCloneService {
     private readonly claudeProvider: ClaudeProvider,
     private readonly geminiProvider: GeminiProvider,
     private readonly deepSeekProvider: DeepSeekProvider,
+    private readonly redisService: RedisService,
   ) {
     switch (CHOSEN_LLM_MODEL) {
       case LLMModel.OPEN_AI:
@@ -225,6 +231,153 @@ export class LlmCloneService {
   }
 
   async getRealBaeThoughtResponse(
+    userId: number,
+    { chatId, messageText }: RealBaeThoughtRequestDto,
+  ): Promise<RealBaeThoughtResponseDto> {
+    const convo = await this.prisma.conversation.findUnique({
+      where: { id: chatId },
+      select: { match_id: true },
+    });
+
+    if (!convo) {
+      throw new BadRequestException('Match not found for this chat');
+    }
+
+    const match = await this.prisma.match.findUnique({
+      where: { id: convo.match_id },
+      include: {
+        requester: {
+          include: {
+            profile: true,
+            loveLanguage: true,
+            personality: true,
+          },
+        },
+        requested: {
+          include: {
+            profile: true,
+            loveLanguage: true,
+            personality: true,
+          },
+        },
+      },
+    });
+
+    if (!match) throw new BadRequestException('Match not found');
+
+    console.log('Match found:', match);
+
+    const isUserRequester = match.requester_id === userId;
+    const user = isUserRequester ? match.requester : match.requested;
+    const partner = isUserRequester ? match.requested : match.requester;
+
+    if (
+      !user.profile ||
+      !user.loveLanguage ||
+      !user.personality ||
+      !partner.profile ||
+      !partner.loveLanguage ||
+      !partner.personality
+    ) {
+      console.log('user profile:', user.profile);
+      console.log('partner profile:', partner.profile);
+      console.log('user love language:', user.loveLanguage);
+      console.log('partner love language:', partner.loveLanguage);
+      console.log('user personality:', user.personality);
+      console.log('partner personality:', partner.personality);
+
+      throw new BadRequestException('Incomplete user or match data');
+    }
+
+    const userContext: UserContext = {
+      name: user.profile.nickname,
+      birthday: user.profile.birthday.toISOString().split('T')[0],
+      gender: user.profile.gender,
+      city: user.profile.city,
+      interests: user.profile.interests,
+      mbti: user.profile.mbti ?? undefined,
+    };
+
+    const partnerContext: UserContext = {
+      name: partner.profile.nickname,
+      birthday: partner.profile.birthday.toISOString().split('T')[0],
+      gender: partner.profile.gender,
+      city: partner.profile.city,
+      interests: partner.profile.interests,
+      mbti: partner.profile.mbti ?? undefined,
+    };
+
+    const userPersonality: PersonalityContext = {
+      openness: user.personality.openness,
+      conscientiousness: user.personality.conscientiousness,
+      extraversion: user.personality.extraversion,
+      agreeableness: user.personality.agreeableness,
+      neuroticism: user.personality.neuroticism,
+    };
+
+    const partnerPersonality: PersonalityContext = {
+      openness: partner.personality.openness,
+      conscientiousness: partner.personality.conscientiousness,
+      extraversion: partner.personality.extraversion,
+      agreeableness: partner.personality.agreeableness,
+      neuroticism: partner.personality.neuroticism,
+    };
+
+    const userLoveLanguage: LoveLanguageContext = {
+      wordsOfAffirmation: user.loveLanguage.words_of_affirmation,
+      actsOfService: user.loveLanguage.acts_of_service,
+      receivingGifts: user.loveLanguage.receiving_gifts,
+      qualityTime: user.loveLanguage.quality_time,
+      physicalTouch: user.loveLanguage.physical_touch,
+    };
+
+    const partnerLoveLanguage: LoveLanguageContext = {
+      wordsOfAffirmation: partner.loveLanguage.words_of_affirmation,
+      actsOfService: partner.loveLanguage.acts_of_service,
+      receivingGifts: partner.loveLanguage.receiving_gifts,
+      qualityTime: partner.loveLanguage.quality_time,
+      physicalTouch: partner.loveLanguage.physical_touch,
+    };
+
+    const redisKey = `messages:${chatId}`;
+    const raw = await this.redisService.get(redisKey);
+
+    if (!raw) {
+      throw new BadRequestException('No conversation info found in Redis');
+    }
+
+    const conversationInfo: {
+      partnerId: number;
+      messages: { sender_id: number; message_text: string }[];
+    } = JSON.parse(raw || '{}');
+
+    if (!conversationInfo?.messages || !conversationInfo.partnerId) {
+      throw new BadRequestException('Conversation info missing or malformed');
+    }
+    const contextMessages: string[] = conversationInfo.messages.map((msg) => {
+      const role = msg.sender_id === 0 ? 'user' : 'partner';
+      return `${role}: ${msg.message_text}`;
+    });
+
+    const prompt = REALBAE_THOUGHT_ROMPT(
+      contextMessages,
+      messageText,
+      userContext,
+      userPersonality,
+      userLoveLanguage,
+      partnerContext,
+      partnerPersonality,
+      partnerLoveLanguage,
+    );
+
+    const response = await this.llmProvider.getLLMResponse([{ role: 'system', content: prompt }]);
+
+    this.logger.log(`Real Bae thought response generated for user ${userId}: ${response}`);
+
+    return new RealBaeThoughtResponseDto(response);
+  }
+
+  async getTestRealBaeThoughtResponse(
     message: string,
     userId: number,
     contextMessages: string,
