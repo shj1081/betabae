@@ -161,7 +161,6 @@ export class ChatService {
 
     await this.redis.incr(`unread:${recipientId}:${conversationId}`);
 
-    // set up Redis conversation info
     const redisKey = `messages:${conversationId}`;
     const existing = await this.redis.get(redisKey);
 

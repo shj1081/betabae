@@ -12,9 +12,14 @@ export class RealBaeThoughtRequestDto {
 }
 
 export class RealBaeThoughtResponseDto {
-  response: string;
+  @IsString()
+  analysis: string;
 
-  constructor(response: string) {
-    this.response = response;
+  @IsString()
+  suggestions: string;
+
+  constructor(analysis: string, suggestions: string) {
+    this.analysis = analysis;
+    this.suggestions = suggestions;
   }
 }

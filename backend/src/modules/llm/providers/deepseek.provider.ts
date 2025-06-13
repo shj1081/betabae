@@ -1,9 +1,11 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';
+import console from 'console';
 import {
   LLMProviderBaseService,
   LLMMessageContext,
 } from 'src/modules/llm/providers/llm-provider-base.service';
+import { extractJsonFromCodeFence } from 'src/modules/llm/utils/utils';
 
 enum DeepSeekModel {
   R1 = 'deepseek-ai/DeepSeek-R1',
@@ -63,13 +65,10 @@ export class DeepSeekProvider extends LLMProviderBaseService {
 
       if (!raw) return '';
 
-      try {
-        // Find the JSON block inside the text
-        const match = raw.match(/{[\s\S]*}/); // matches the first JSON-like block
-        if (!match) return '';
+      console.log('DeepSeek response:', raw);
 
-        const parsed: { response?: string } = JSON.parse(match[0]);
-        return parsed.response ?? '';
+      try {
+        return extractJsonFromCodeFence(raw) || '';
       } catch {
         console.error('Failed to parse JSON from DeepSeek response:', raw);
         return '';

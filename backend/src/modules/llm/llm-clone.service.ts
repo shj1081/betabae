@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { BetaBaeClone } from '@prisma/client';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 import { RedisService } from 'src/infra/redis/redis.service';
@@ -352,10 +357,12 @@ export class LlmCloneService {
     if (!conversationInfo?.messages || !conversationInfo.partnerId) {
       throw new BadRequestException('Conversation info missing or malformed');
     }
-    const contextMessages: string[] = conversationInfo.messages.map((msg) => {
-      const role = msg.sender_id === 0 ? 'user' : 'partner';
-      return `${role}: ${msg.message_text}`;
-    });
+    const contextMessages: string[] = conversationInfo.messages
+      .filter((msg) => msg.message_text.trim() !== '')
+      .map((msg) => {
+        const role = msg.sender_id === userId ? 'user' : 'partner';
+        return `${role}: ${msg.message_text}`;
+      });
 
     console.log('contextMessages:', contextMessages);
 
@@ -370,11 +377,29 @@ export class LlmCloneService {
       partnerLoveLanguage,
     );
 
-    const response = await this.llmProvider.getLLMResponse([{ role: 'system', content: prompt }]);
+    const rawResponse = await this.llmProvider.getLLMResponse([
+      { role: 'system', content: prompt },
+    ]);
 
-    this.logger.log(`Real Bae thought response generated for user ${userId}: ${response}`);
+    let response: { analysis: string; suggestions: string };
 
-    return new RealBaeThoughtResponseDto(response);
+    try {
+      response = JSON.parse(rawResponse) as {
+        analysis: string;
+        suggestions: string;
+      };
+    } catch (err) {
+      this.logger.error(`Failed to parse LLM response: ${rawResponse}`);
+      throw new InternalServerErrorException('Invalid LLM response format', String(err));
+    }
+
+    this.logger.log(`Real Bae thought analysis generated for user ${userId}: ${response.analysis}`);
+
+    this.logger.log(
+      `Real Bae thought suggestions generated for user ${userId}: ${response.suggestions}`,
+    );
+
+    return new RealBaeThoughtResponseDto(response.analysis, response.suggestions);
   }
 
   async getTestRealBaeThoughtResponse(
