@@ -74,6 +74,7 @@ export class GeminiProvider extends LLMProviderBaseService {
 
       console.log('Extracted text from Gemini response:', text);
       return extractJsonFromCodeFence(text);
+
     } catch (error) {
       console.error('Gemini API error:', error?.response?.data || error.message);
       throw new InternalServerErrorException('Failed to get response from Gemini');
