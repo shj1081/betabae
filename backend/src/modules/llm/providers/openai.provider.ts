@@ -5,6 +5,7 @@ import {
   LLMMessageContext,
   LLMProviderBaseService,
 } from 'src/modules/llm/providers/llm-provider-base.service';
+import { extractJsonFromCodeFence } from 'src/modules/llm/utils/utils';
 
 enum OpenAIModel {
   GPT_3_5_TURBO = 'gpt-3.5-turbo',
@@ -34,7 +35,9 @@ export class OpenAIProvider extends LLMProviderBaseService {
 
       const message = chatCompletion.choices[0]?.message?.content ?? '';
 
-      return message.trim();
+      console.log('OpenAI API response:', message);
+
+      return extractJsonFromCodeFence(message.trim());
     } catch (error) {
       console.error('OpenAI API error:', error);
 

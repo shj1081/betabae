@@ -161,34 +161,33 @@ export class ChatService {
 
     await this.redis.incr(`unread:${recipientId}:${conversationId}`);
 
-    if (message.conversation.type === 'BETA_BAE') {
-      const redisKey = `messages:${conversationId}`;
-      const existing = await this.redis.get(redisKey);
+    const redisKey = `messages:${conversationId}`;
+    const existing = await this.redis.get(redisKey);
 
-      let conversationInfo: {
-        partnerId: number;
-        messages: { sender_id: number; message_text: string }[];
-      };
+    let conversationInfo: {
+      partnerId: number;
+      messages: { sender_id: number; message_text: string }[];
+    };
 
-      if (existing) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          conversationInfo = JSON.parse(existing);
-        } catch {
-          conversationInfo = { partnerId: recipientId, messages: [] };
-        }
-      } else {
-        // First message of the convo — decide who the partner is (LLM clone target)
+    if (existing) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        conversationInfo = JSON.parse(existing);
+      } catch {
         conversationInfo = { partnerId: recipientId, messages: [] };
       }
-
-      conversationInfo.messages.push({
-        sender_id: senderId,
-        message_text: text,
-      });
-
-      await this.redis.set(redisKey, JSON.stringify(conversationInfo));
+    } else {
+      // First message of the convo — decide who the partner is (LLM clone target)
+      conversationInfo = { partnerId: recipientId, messages: [] };
     }
+
+    conversationInfo.messages.push({
+      sender_id: senderId,
+      message_text: text,
+    });
+
+    await this.redis.set(redisKey, JSON.stringify(conversationInfo));
+
     return this.mapMessageToDto(message);
   }
 

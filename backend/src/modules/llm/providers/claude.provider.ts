@@ -4,6 +4,7 @@ import {
   LLMProviderBaseService,
   LLMMessageContext,
 } from 'src/modules/llm/providers/llm-provider-base.service';
+import { extractJsonFromCodeFence } from 'src/modules/llm/utils/utils';
 
 enum ClaudeModel {
   CLAUDE_3_OPUS = 'claude-3-opus-20240229',
@@ -66,7 +67,7 @@ export class ClaudeProvider extends LLMProviderBaseService {
       });
 
       const reply = response.data?.content?.[0]?.text?.trim();
-      return reply ?? '';
+      return extractJsonFromCodeFence(reply) ?? '';
     } catch (error) {
       console.error('Claude API error:', error);
       throw new InternalServerErrorException('Failed to get response from Claude');

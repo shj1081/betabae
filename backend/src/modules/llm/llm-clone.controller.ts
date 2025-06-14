@@ -4,6 +4,10 @@ import {
   BetaBaeCreateRequestDto,
   BetaBaeUpdateRequestDto,
 } from 'src/modules/llm/dto/betabae-clone.dto';
+import {
+  RealBaeThoughtRequestDto,
+  RealBaeThoughtResponseDto,
+} from 'src/modules/llm/dto/realbae-thought.dto';
 import { BetaBaeMessageRequest, LlmCloneService } from 'src/modules/llm/llm-clone.service';
 import { AuthenticatedRequest } from 'src/modules/types/authenticated-request.interface';
 
@@ -16,33 +20,32 @@ export class LlmCloneController {
   async createBetaBae(@Req() req: AuthenticatedRequest, @Body() body: BetaBaeCreateRequestDto) {
     await this.llmCloneService.createBetaBae(req.user.id, body);
   }
+
   @UseGuards(AuthGuard)
   @Post('delete')
   async deleteBetaBae(@Req() req: AuthenticatedRequest) {
     await this.llmCloneService.deleteBetaBae(req.user.id);
   }
+
   @UseGuards(AuthGuard)
   @Post('update')
   async updateBetaBae(@Req() req: AuthenticatedRequest, @Body() body: BetaBaeUpdateRequestDto) {
     await this.llmCloneService.updateBetaBae(req.user.id, body);
   }
+
   @UseGuards(AuthGuard)
   @Post('response')
   async getBetaBaeResponse(@Req() req: AuthenticatedRequest, @Body() body: BetaBaeMessageRequest) {
     return await this.llmCloneService.getBetaBaeResponse(req.user.id, body);
   }
 
+  @UseGuards(AuthGuard)
   @Post('real-bae-thought')
   async getRealBaeThoughtResponse(
     @Req() req: AuthenticatedRequest,
-    @Body() body: { messageText: string; contextText: string; matchId: number },
-  ) {
-    return await this.llmCloneService.getRealBaeThoughtResponse(
-      body.messageText,
-      req.user.id,
-      body.contextText,
-      body.matchId,
-    );
+    @Body() body: RealBaeThoughtRequestDto,
+  ): Promise<RealBaeThoughtResponseDto> {
+    return await this.llmCloneService.getRealBaeThoughtResponse(req.user.id, body);
   }
 
   // Testing purpose APIs
@@ -75,8 +78,8 @@ export class LlmCloneController {
       contextText: string;
       matchId: number;
     },
-  ) {
-    return await this.llmCloneService.getRealBaeThoughtResponse(
+  ): Promise<string> {
+    return await this.llmCloneService.getTestRealBaeThoughtResponse(
       body.messageText,
       body.userId,
       body.contextText,

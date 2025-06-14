@@ -7,12 +7,15 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import BottomTabBar from '@/components/BottomTabBar';
 import COLORS from '@/constants/colors';
 import api from '@/lib/api';
 import ListFilterTab from '@/components/ListFilterTab';
 import TalkButton from '@/components/TalkButton';
+import { useRouter } from 'expo-router';
+import { useMatchStore } from '@/store/matchStore';
 
 interface MatchItem {
   id: number;
@@ -45,6 +48,9 @@ export default function ListPage() {
   const [userId, setUserId] = useState<number | null>(null);
   const [selectedTab, setSelectedTab] = useState<'liked' | 'likedMe'>('liked');
   const [userProfiles, setUserProfiles] = useState<{ [key: number]: UserProfile }>({});
+
+  const router = useRouter();
+  const setSelectedUserId = useMatchStore((state) => state.setSelectedUserId);
 
   useEffect(() => {
     const fetchUserAndMatches = async () => {
@@ -116,17 +122,26 @@ export default function ListPage() {
     const profile = userProfiles[targetUser.id];
     const statusUpper = item.status.toUpperCase().trim();
 
+    const onPressUser = () => {
+      setSelectedUserId(targetUser.id);
+      router.push('/match/UserProfileDetailPage');
+    };
+
+    const userSection = (
+      <TouchableOpacity style={styles.userSection} onPress={onPressUser} activeOpacity={0.7}>
+        {profile?.profileImageUrl ? (
+          <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatarPlaceholder} />
+        )}
+        <Text style={styles.message}>{targetUser.nickname}</Text>
+      </TouchableOpacity>
+    );
+
     if (statusUpper === 'REJECTED') {
       return (
         <View style={styles.notificationRow}>
-          <View style={styles.userSection}>
-            {profile?.profileImageUrl ? (
-              <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder} />
-            )}
-            <Text style={styles.message}>{targetUser.nickname}</Text>
-          </View>
+          {userSection}
           <View style={styles.statusBadgeRejected}>
             <Text style={styles.statusTextRejected}>Rejected</Text>
           </View>
@@ -137,14 +152,7 @@ export default function ListPage() {
     if (statusUpper === 'PENDING') {
       return (
         <View style={styles.notificationRow}>
-          <View style={styles.userSection}>
-            {profile?.profileImageUrl ? (
-              <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder} />
-            )}
-            <Text style={styles.message}>{targetUser.nickname}</Text>
-          </View>
+          {userSection}
           <View style={styles.statusBadgeWaiting}>
             <Text style={styles.statusTextWaiting}>Waiting</Text>
           </View>
@@ -156,14 +164,7 @@ export default function ListPage() {
       if (item.realBaeRequesterConsent && item.realBaeRequestedConsent) {
         return (
           <View style={styles.notificationRow}>
-            <View style={styles.userSection}>
-              {profile?.profileImageUrl ? (
-                <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
-              ) : (
-                <View style={styles.avatarPlaceholder} />
-              )}
-              <Text style={styles.message}>{targetUser.nickname}</Text>
-            </View>
+            {userSection}
             <View style={styles.statusBadgeMatched}>
               <Text style={styles.statusTextMatched}>Matched</Text>
             </View>
@@ -173,14 +174,7 @@ export default function ListPage() {
 
       return (
         <View style={styles.notificationRow}>
-          <View style={styles.userSection}>
-            {profile?.profileImageUrl ? (
-              <Image source={{ uri: profile.profileImageUrl }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder} />
-            )}
-            <Text style={styles.message}>{targetUser.nickname}</Text>
-          </View>
+          {userSection}
           <TalkButton
             title="Talk with RealBae"
             onPress={() => handleAcceptRealBae(item.id)}
@@ -274,10 +268,10 @@ const styles = StyleSheet.create({
   },
   statusTextRejected: {
     color: '#ff0000',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   statusBadgeWaiting: {
-    backgroundColor: COLORS.WHITE, 
+    backgroundColor: COLORS.WHITE,
     paddingVertical: 4,
     paddingHorizontal: 12,
     borderRadius: 10,
@@ -286,10 +280,10 @@ const styles = StyleSheet.create({
   },
   statusTextWaiting: {
     color: '#50BCDF',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   statusBadgeMatched: {
-    backgroundColor: COLORS.WHITE, 
+    backgroundColor: COLORS.WHITE,
     borderWidth: 2,
     borderColor: COLORS.BLACK,
     paddingVertical: 4,

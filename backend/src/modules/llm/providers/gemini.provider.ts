@@ -4,6 +4,7 @@ import {
   LLMMessageContext,
   LLMProviderBaseService,
 } from 'src/modules/llm/providers/llm-provider-base.service';
+import { extractJsonFromCodeFence } from 'src/modules/llm/utils/utils';
 
 enum GeminiModel {
   FLASH = 'models/gemini-1.5-flash',
@@ -72,7 +73,8 @@ export class GeminiProvider extends LLMProviderBaseService {
       }
 
       console.log('Extracted text from Gemini response:', text);
-      return text;
+      return extractJsonFromCodeFence(text);
+
     } catch (error) {
       console.error('Gemini API error:', error?.response?.data || error.message);
       throw new InternalServerErrorException('Failed to get response from Gemini');

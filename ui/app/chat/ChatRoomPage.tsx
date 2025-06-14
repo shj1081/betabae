@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
@@ -13,9 +14,9 @@ import {
 import { Svg, Path } from 'react-native-svg';
 import BackButton from '@/components/BackButton';
 import COLORS from '@/constants/colors';
+import PopupWindow from '@/components/PopupWindow';
 import { connectSocket } from '@/lib/socket';
 import api from '@/lib/api';
-import * as ImagePicker from 'expo-image-picker';
 import { useChatStore } from '@/store/chatStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -37,9 +38,14 @@ export default function ChatRoomPage() {
   const [partnerName, setPartnerName] = useState('');
   const [myName, setMyName] = useState('');
   const [userId, setUserId] = useState<number | null>(null);
-  const [userProfiles, setUserProfiles] = useState<
-    Record<number, { nickname: string; profileImageUrl: string }>
-  >({});
+  const [userProfiles, setUserProfiles] = useState<Record<number, { nickname: string; profileImageUrl: string }>>({});
+  const [pressedMessageId, setPressedMessageId] = useState<number | null>(null);
+  const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
+  const [isGuideVisible, setIsGuideVisible] = useState(false);
+  const [isAnalysisVisible, setIsAnalysisVisible] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState({ analysis: '', suggestions: '' });
+  const [pendingMessageText, setPendingMessageText] = useState<string | null>(null);
+  const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
 
   useEffect(() => {
     const restoreId = async () => {
@@ -48,7 +54,7 @@ export default function ChatRoomPage() {
         if (lastId) {
           useChatStore.getState().setConversationId(lastId);
         } else {
-          router.replace('/chat'); 
+          router.replace('/chat');
         }
       }
     };
@@ -68,22 +74,18 @@ export default function ChatRoomPage() {
         );
         setMessages(sortedMessages);
 
-        const senderIds = [...new Set(sortedMessages.map((m: Message) => m.sender.id))];
+        const senderIds = [...new Set(sortedMessages.map((m) => m.sender.id))];
         senderIds.forEach(fetchUserProfile);
-
-        const other = sortedMessages.find((msg) => msg.sender.name !== meName);
-        if (other) setPartnerName(other.sender.name);
       } catch (err) {
         console.error('❌ 메시지 불러오기 실패:', err);
       }
     };
-
     fetchMessages();
   }, [conversationId]);
 
   useEffect(() => {
-    if (!conversationId) return;
     const socket = connectSocket();
+    if (!conversationId) return;
     socket.emit('enter', { cid: Number(conversationId) });
 
     const handleNewMessage = (msg: Message) => {
@@ -95,7 +97,6 @@ export default function ChatRoomPage() {
     };
 
     socket.on('newMessage', handleNewMessage);
-
     return () => {
       socket.emit('leave', { cid: Number(conversationId) });
       socket.off('newMessage', handleNewMessage);
@@ -118,6 +119,15 @@ export default function ChatRoomPage() {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    if (!userId) return;
+    const other = messages.find((msg) => msg.sender.id !== userId);
+    if (other) {
+      const profile = userProfiles[other.sender.id];
+      setPartnerName(profile?.nickname || other.sender.name);
+    }
+  }, [messages, userId, userProfiles]);
+
   const scrollToBottom = () => {
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
@@ -126,22 +136,15 @@ export default function ChatRoomPage() {
 
   const sendText = () => {
     if (!text.trim() || !conversationId) return;
-
     const newMessage: Message = {
       messageId: Date.now(),
       messageText: text,
       sender: { id: userId || -1, name: myName },
       sentAt: new Date().toISOString(),
     };
-
     setMessages((prev) => [...prev, newMessage]);
-
     const socket = connectSocket();
-    socket.emit('text', {
-      cid: Number(conversationId),
-      text,
-    });
-
+    socket.emit('text', { cid: Number(conversationId), text });
     setText('');
   };
 
@@ -168,30 +171,81 @@ export default function ChatRoomPage() {
     router.back();
   };
 
+const handleHeartClick = (messageText: string) => {
+  setPendingMessageText(messageText);
+  setIsConfirmationVisible(true);
+};
+
+const handleAnalysisConfirm = async () => {
+  if (!conversationId || !pendingMessageText) return;
+  
+  setIsConfirmationVisible(false);
+  
+  const payload = {
+    chatId: Number(conversationId),
+    messageText: pendingMessageText,
+  };
+  console.log('request payload:', payload);
+  
+  try {
+    const res = await api.post('/llm-clone/real-bae-thought', payload);
+    console.log('API response:', res.data);
+    
+    // Handle the structured response with analysis and suggestions
+    if (res.data.analysis && res.data.suggestions) {
+      setAnalysisResult({
+        analysis: res.data.analysis,
+        suggestions: res.data.suggestions
+      });
+    } else if (res.data.response) {
+      // Fallback for backward compatibility
+      setAnalysisResult({
+        analysis: res.data.response,
+        suggestions: ''
+      });
+    }
+    
+    setIsAnalysisVisible(true);
+  } catch (err) {
+    console.error('Error:', err);
+    setAnalysisResult({
+      analysis: 'Analyze error',
+      suggestions: ''
+    });
+    setIsAnalysisVisible(true);
+  }
+  
+  setPendingMessageText(null);
+};
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
+      <View style={styles.headerRow}>
+        <BackButton onPress={handleBack} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.partnerName}>{partnerName}</Text>
+        </View>
+        <TouchableOpacity style={styles.questionButton} onPress={() => setIsGuideVisible(true)}>
+          <Text style={styles.questionMark}>?</Text>
+        </TouchableOpacity>
+      </View>
 
-      <BackButton onPress={handleBack} />
-
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={styles.messageList}
-        onContentSizeChange={scrollToBottom}
-      >
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.messageList} onContentSizeChange={scrollToBottom}>
         {messages.map((msg) => {
           const isMine = msg.sender.id === userId;
           const profile = userProfiles[msg.sender.id];
+          const isHovered = hoveredMessageId === msg.messageId;
+
           return (
             <View
               key={msg.messageId}
-              style={[
-                styles.messageRow,
-                isMine ? styles.myMessage : styles.theirMessage,
-              ]}
+              style={[styles.messageRow, isMine ? styles.myMessage : styles.theirMessage]}
+              onMouseEnter={() => setHoveredMessageId(msg.messageId)}
+              onMouseLeave={() => setHoveredMessageId(null)}
             >
               {!isMine && (
                 <View style={styles.profileSection}>
@@ -207,15 +261,29 @@ export default function ChatRoomPage() {
                   />
                 </View>
               )}
-              <View>
-                {!isMine && (
-                  <Text style={styles.nickname}>
-                    {profile?.nickname || msg.sender.name}
-                  </Text>
-                )}
-                <View style={styles.bubble}>
-                  <Text style={styles.messageText}>{msg.messageText}</Text>
+
+              <View style={styles.messageContainer}>
+                {!isMine && <Text style={styles.nickname}>{profile?.nickname || msg.sender.name}</Text>}
+
+                <View style={styles.bubbleRow}>
+                  <Pressable
+                    onPressIn={() => setPressedMessageId(msg.messageId)}
+                    onPressOut={() => setPressedMessageId(null)}
+                    style={[styles.bubble, pressedMessageId === msg.messageId && styles.pressedMessage]}
+                  >
+                    <Text style={styles.messageText}>{msg.messageText}</Text>
+                  </Pressable>
+
+                  {isHovered && !isMine && (
+                    <TouchableOpacity
+                      style={styles.heartButton}
+                      onPress={() => handleHeartClick(msg.messageText)}
+                    >
+                      <Text style={{ fontSize: 12 }}>❤️</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
+
                 <Text style={styles.time}>
                   {new Date(msg.sentAt).toLocaleTimeString('en-US', {
                     hour: '2-digit',
@@ -238,7 +306,7 @@ export default function ChatRoomPage() {
 
         <TextInput
           style={styles.input}
-          placeholder="Type a message..."
+          placeholder="Enter a message..."
           value={text}
           onChangeText={setText}
         />
@@ -249,12 +317,62 @@ export default function ChatRoomPage() {
           </Svg>
         </TouchableOpacity>
       </View>
+
+      <PopupWindow
+        visible={isGuideVisible}
+        title="What is RealBae Thinking?"
+        message="Go to the chat you want and press the heart button."
+        onCancel={() => setIsGuideVisible(false)}
+        onConfirm={() => setIsGuideVisible(false)}
+      />
+
+      <PopupWindow
+        visible={isConfirmationVisible}
+        title="Analyze RealBae's Thoughts?"
+        message="Do you want to analyze what RealBae is thinking about this message?"
+        onCancel={() => {
+          setIsConfirmationVisible(false);
+          setPendingMessageText(null);
+        }}
+        onConfirm={handleAnalysisConfirm}
+      />
+
+      <PopupWindow
+        visible={isAnalysisVisible}
+        title="What is RealBae Thinking?"
+        message={
+          (analysisResult.analysis ? `Analysis:\n${analysisResult.analysis}\n\n` : '') +
+          (analysisResult.suggestions ? `Suggestions:\n${analysisResult.suggestions}` : '')
+        }
+        onCancel={() => setIsAnalysisVisible(false)}
+        onConfirm={() => setIsAnalysisVisible(false)}
+      />
+
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.WHITE },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  partnerName: { fontSize: 18, fontWeight: 'bold', color: COLORS.BLACK },
+  questionButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.LIGHT_GRAY,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  questionMark: { fontSize: 20, color: COLORS.DARK_GRAY, fontWeight: '600' },
   messageList: { paddingHorizontal: 20, paddingBottom: 20 },
   messageRow: { marginVertical: 10, maxWidth: '75%', flexDirection: 'row' },
   myMessage: { alignSelf: 'flex-end', justifyContent: 'flex-end' },
@@ -264,29 +382,30 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.GRAY,
+    backgroundColor: COLORS.LIGHT_GRAY,
   },
-  nickname: {
-    fontSize: 12,
-    color: COLORS.BLACK,
-    marginBottom: 4,
-  },
+  nickname: { fontSize: 12, color: COLORS.BLACK, marginBottom: 4 },
   bubble: {
     backgroundColor: COLORS.LIGHT_GRAY,
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  messageText: {
-    fontSize: 15,
-    color: COLORS.BLACK,
+  bubbleWithHeart: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  time: {
-    fontSize: 11,
-    color: COLORS.DARK_GRAY,
-    marginTop: 4,
-    alignSelf: 'flex-end',
+  heartButton: {
+    marginTop: 12,
+    marginLeft: 0,
+    padding: 4,
+    backgroundColor: COLORS.LIGHT_GRAY,
+    borderRadius: 20,
   },
+  pressedMessage: { backgroundColor: '#C9C9C9' },
+  messageText: { fontSize: 15, color: COLORS.BLACK },
+  time: { fontSize: 11, color: COLORS.DARK_GRAY, marginTop: 4, marginLeft: 5 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -314,7 +433,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  sendButton: {
-    backgroundColor: COLORS.BLACK,
+  sendButton: { backgroundColor: COLORS.BLACK },
+    messageContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  bubbleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  analysisContainer: {
+    width: '100%',
+  },
+  analysisSection: {
+    marginBottom: 12,
+  },
+  analysisTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 4,
+    color: COLORS.BLACK,
+  },
+  analysisText: {
+    fontSize: 14,
+    color: COLORS.BLACK,
+    lineHeight: 20,
   },
 });
