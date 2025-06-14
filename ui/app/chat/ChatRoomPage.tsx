@@ -43,7 +43,9 @@ export default function ChatRoomPage() {
   const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
   const [isGuideVisible, setIsGuideVisible] = useState(false);
   const [isAnalysisVisible, setIsAnalysisVisible] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState('');
+  const [analysisResult, setAnalysisResult] = useState({ analysis: '', suggestions: '' });
+  const [pendingMessageText, setPendingMessageText] = useState<string | null>(null);
+  const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
 
   useEffect(() => {
     const restoreId = async () => {
@@ -169,22 +171,51 @@ export default function ChatRoomPage() {
     router.back();
   };
 
-const handleHeartClick = async (messageText: string) => {
-  if (!conversationId) return;
+const handleHeartClick = (messageText: string) => {
+  setPendingMessageText(messageText);
+  setIsConfirmationVisible(true);
+};
+
+const handleAnalysisConfirm = async () => {
+  if (!conversationId || !pendingMessageText) return;
+  
+  setIsConfirmationVisible(false);
+  
   const payload = {
     chatId: Number(conversationId),
-    messageText,
+    messageText: pendingMessageText,
   };
   console.log('request payload:', payload);
+  
   try {
     const res = await api.post('/llm-clone/real-bae-thought', payload);
-    setAnalysisResult(res.data.response);
+    console.log('API response:', res.data);
+    
+    // Handle the structured response with analysis and suggestions
+    if (res.data.analysis && res.data.suggestions) {
+      setAnalysisResult({
+        analysis: res.data.analysis,
+        suggestions: res.data.suggestions
+      });
+    } else if (res.data.response) {
+      // Fallback for backward compatibility
+      setAnalysisResult({
+        analysis: res.data.response,
+        suggestions: ''
+      });
+    }
+    
     setIsAnalysisVisible(true);
   } catch (err) {
     console.error('Error:', err);
-    setAnalysisResult('Analyze error');
+    setAnalysisResult({
+      analysis: 'Analyze error',
+      suggestions: ''
+    });
     setIsAnalysisVisible(true);
   }
+  
+  setPendingMessageText(null);
 };
 
   return (
@@ -296,9 +327,23 @@ const handleHeartClick = async (messageText: string) => {
       />
 
       <PopupWindow
+        visible={isConfirmationVisible}
+        title="Analyze RealBae's Thoughts?"
+        message="Do you want to analyze what RealBae is thinking about this message?"
+        onCancel={() => {
+          setIsConfirmationVisible(false);
+          setPendingMessageText(null);
+        }}
+        onConfirm={handleAnalysisConfirm}
+      />
+
+      <PopupWindow
         visible={isAnalysisVisible}
         title="What is RealBae Thinking?"
-        message={analysisResult}
+        message={
+          (analysisResult.analysis ? `Analysis:\n${analysisResult.analysis}\n\n` : '') +
+          (analysisResult.suggestions ? `Suggestions:\n${analysisResult.suggestions}` : '')
+        }
         onCancel={() => setIsAnalysisVisible(false)}
         onConfirm={() => setIsAnalysisVisible(false)}
       />
@@ -397,5 +442,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  analysisContainer: {
+    width: '100%',
+  },
+  analysisSection: {
+    marginBottom: 12,
+  },
+  analysisTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 4,
+    color: COLORS.BLACK,
+  },
+  analysisText: {
+    fontSize: 14,
+    color: COLORS.BLACK,
+    lineHeight: 20,
   },
 });
