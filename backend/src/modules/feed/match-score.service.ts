@@ -87,7 +87,7 @@ export class MatchScoreService {
   }
 
   /**
-   * Calculate MBTI similarity based on number of matching letters
+   * Calculate MBTI similarity based on Dan Johnston's Simplified MBTI Compatibility Chart
    * @param mbti1 - First user's MBTI
    * @param mbti2 - Second user's MBTI
    * @returns Similarity score between 0 and 1
@@ -98,19 +98,132 @@ export class MatchScoreService {
       return 0.5;
     }
 
-    const mbti1Str = mbti1.toString();
-    const mbti2Str = mbti2.toString();
-    
-    // Count mismatches
-    let mismatches = 0;
-    for (let i = 0; i < 4; i++) {
-      if (mbti1Str[i] !== mbti2Str[i]) {
-        mismatches++;
-      }
-    }
+    return this.compatibilityLevel(mbti1, mbti2);
+  }
 
-    // Calculate similarity
-    return 1 - mismatches / 4;
+  /**
+   * MBTI compatibility levels and their normalized scores
+   */
+  private readonly levelScore = {
+    IDEAL:     1.00, // blue – Often Listed as Ideal Match
+    GOOD:      0.85, // teal – It's Got a Good Chance
+    ONE_SIDED: 0.70, // green – One-Sided Match
+    WORKABLE:  0.55, // yellow – It Could Work, But Not Ideal
+    CAUTION:   0.40, // red – Uh-Oh, Think This One Through
+  };
+
+  /**
+   * Dan Johnston's Simplified MBTI Compatibility Chart matrix
+   * Maps compatibility between any two MBTI types
+   */
+  private readonly MBTI_MATRIX: Record<string, Record<string, keyof typeof this.levelScore>> = {
+    INFP: { // ────────────────────────────────────────────
+      INFP:"GOOD", ENFP:"GOOD", INFJ:"GOOD", ENFJ:"IDEAL",
+      INTJ:"GOOD", ENTJ:"IDEAL", INTP:"CAUTION", ENTP:"CAUTION",
+      ISFP:"GOOD", ESFP:"CAUTION", ISTP:"CAUTION", ESTP:"CAUTION",
+      ISFJ:"GOOD", ESFJ:"GOOD", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    ENFP: {
+      INFP:"GOOD", ENFP:"GOOD", INFJ:"IDEAL", ENFJ:"GOOD",
+      INTJ:"IDEAL", ENTJ:"GOOD", INTP:"GOOD", ENTP:"GOOD",
+      ISFP:"CAUTION", ESFP:"CAUTION", ISTP:"CAUTION", ESTP:"CAUTION",
+      ISFJ:"GOOD", ESFJ:"GOOD", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    INFJ: {
+      INFP:"GOOD", ENFP:"IDEAL", INFJ:"GOOD", ENFJ:"GOOD",
+      INTJ:"GOOD", ENTJ:"GOOD", INTP:"GOOD", ENTP:"IDEAL",
+      ISFP:"CAUTION", ESFP:"CAUTION", ISTP:"CAUTION", ESTP:"CAUTION",
+      ISFJ:"GOOD", ESFJ:"GOOD", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    ENFJ: {
+      INFP:"IDEAL", ENFP:"GOOD", INFJ:"GOOD", ENFJ:"GOOD",
+      INTJ:"GOOD", ENTJ:"GOOD", INTP:"GOOD", ENTP:"GOOD",
+      ISFP:"GOOD", ESFP:"GOOD", ISTP:"CAUTION", ESTP:"CAUTION",
+      ISFJ:"GOOD", ESFJ:"IDEAL", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    INTJ: {
+      INFP:"GOOD", ENFP:"IDEAL", INFJ:"GOOD", ENFJ:"GOOD",
+      INTJ:"GOOD", ENTJ:"IDEAL", INTP:"GOOD", ENTP:"GOOD",
+      ISFP:"WORKABLE", ESFP:"WORKABLE", ISTP:"GOOD", ESTP:"WORKABLE",
+      ISFJ:"WORKABLE", ESFJ:"WORKABLE", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    ENTJ: {
+      INFP:"IDEAL", ENFP:"GOOD", INFJ:"GOOD", ENFJ:"GOOD",
+      INTJ:"IDEAL", ENTJ:"GOOD", INTP:"GOOD", ENTP:"GOOD",
+      ISFP:"WORKABLE", ESFP:"WORKABLE", ISTP:"WORKABLE", ESTP:"WORKABLE",
+      ISFJ:"WORKABLE", ESFJ:"WORKABLE", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    INTP: {
+      INFP:"CAUTION", ENFP:"GOOD", INFJ:"GOOD", ENFJ:"GOOD",
+      INTJ:"GOOD", ENTJ:"GOOD", INTP:"GOOD", ENTP:"GOOD",
+      ISFP:"WORKABLE", ESFP:"WORKABLE", ISTP:"GOOD", ESTP:"WORKABLE",
+      ISFJ:"WORKABLE", ESFJ:"WORKABLE", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    ENTP: {
+      INFP:"CAUTION", ENFP:"GOOD", INFJ:"IDEAL", ENFJ:"GOOD",
+      INTJ:"GOOD", ENTJ:"GOOD", INTP:"GOOD", ENTP:"GOOD",
+      ISFP:"WORKABLE", ESFP:"WORKABLE", ISTP:"WORKABLE", ESTP:"WORKABLE",
+      ISFJ:"WORKABLE", ESFJ:"WORKABLE", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    ISFP: {
+      INFP:"GOOD", ENFP:"CAUTION", INFJ:"CAUTION", ENFJ:"GOOD",
+      INTJ:"WORKABLE", ENTJ:"WORKABLE", INTP:"WORKABLE", ENTP:"WORKABLE",
+      ISFP:"GOOD", ESFP:"GOOD", ISTP:"GOOD", ESTP:"GOOD",
+      ISFJ:"GOOD", ESFJ:"GOOD", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    ESFP: {
+      INFP:"CAUTION", ENFP:"CAUTION", INFJ:"CAUTION", ENFJ:"GOOD",
+      INTJ:"WORKABLE", ENTJ:"WORKABLE", INTP:"WORKABLE", ENTP:"WORKABLE",
+      ISFP:"GOOD", ESFP:"GOOD", ISTP:"GOOD", ESTP:"GOOD",
+      ISFJ:"GOOD", ESFJ:"GOOD", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    ISTP: {
+      INFP:"CAUTION", ENFP:"CAUTION", INFJ:"CAUTION", ENFJ:"CAUTION",
+      INTJ:"GOOD", ENTJ:"WORKABLE", INTP:"GOOD", ENTP:"WORKABLE",
+      ISFP:"GOOD", ESFP:"GOOD", ISTP:"GOOD", ESTP:"GOOD",
+      ISFJ:"GOOD", ESFJ:"GOOD", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    ESTP: {
+      INFP:"CAUTION", ENFP:"CAUTION", INFJ:"CAUTION", ENFJ:"CAUTION",
+      INTJ:"WORKABLE", ENTJ:"WORKABLE", INTP:"WORKABLE", ENTP:"WORKABLE",
+      ISFP:"GOOD", ESFP:"GOOD", ISTP:"GOOD", ESTP:"GOOD",
+      ISFJ:"GOOD", ESFJ:"GOOD", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    ISFJ: {
+      INFP:"GOOD", ENFP:"GOOD", INFJ:"GOOD", ENFJ:"GOOD",
+      INTJ:"WORKABLE", ENTJ:"WORKABLE", INTP:"WORKABLE", ENTP:"WORKABLE",
+      ISFP:"GOOD", ESFP:"GOOD", ISTP:"GOOD", ESTP:"GOOD",
+      ISFJ:"GOOD", ESFJ:"IDEAL", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    ESFJ: {
+      INFP:"GOOD", ENFP:"GOOD", INFJ:"GOOD", ENFJ:"IDEAL",
+      INTJ:"WORKABLE", ENTJ:"WORKABLE", INTP:"WORKABLE", ENTP:"WORKABLE",
+      ISFP:"GOOD", ESFP:"GOOD", ISTP:"GOOD", ESTP:"GOOD",
+      ISFJ:"IDEAL", ESFJ:"GOOD", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    ISTJ: {
+      INFP:"GOOD", ENFP:"GOOD", INFJ:"GOOD", ENFJ:"GOOD",
+      INTJ:"GOOD", ENTJ:"GOOD", INTP:"GOOD", ENTP:"GOOD",
+      ISFP:"GOOD", ESFP:"GOOD", ISTP:"GOOD", ESTP:"GOOD",
+      ISFJ:"GOOD", ESFJ:"GOOD", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+    ESTJ: {
+      INFP:"GOOD", ENFP:"GOOD", INFJ:"GOOD", ENFJ:"GOOD",
+      INTJ:"GOOD", ENTJ:"GOOD", INTP:"GOOD", ENTP:"GOOD",
+      ISFP:"GOOD", ESFP:"GOOD", ISTP:"GOOD", ESTP:"GOOD",
+      ISFJ:"GOOD", ESFJ:"GOOD", ISTJ:"GOOD", ESTJ:"GOOD",
+    },
+  };
+
+  /**
+   * Calculate compatibility score between two MBTI types using the matrix
+   * @param mbti1 First MBTI type
+   * @param mbti2 Second MBTI type
+   * @returns Compatibility score between 0.40 and 1.00
+   */
+  private compatibilityLevel(mbti1: MBTI, mbti2: MBTI): number {
+    const level = this.MBTI_MATRIX[mbti1][mbti2];
+    return this.levelScore[level];
   }
 
   /**
