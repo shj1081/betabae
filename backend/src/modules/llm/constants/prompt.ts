@@ -82,10 +82,8 @@ REQUIREMENTS:
 6. Do return an empty response if the user has not provided enough information to create a response. Create a question for the user to provide more information. For instance, "what are you doing this weekend?"
 
 OUTPUT FORMAT:
-The output should be a string in JSON format with the following structure. Do not include any additional text or code fences:
-{
-  "response": "<concise response to the user's message>",
-}
+The output should be a string with the response to the user's message. Do not include any additional texts, quotations, or JSON formatting.
+example response: "I'm just chilling at home, how about you?"
 `;
 
 export const REALBAE_THOUGHT_ROMPT = (
