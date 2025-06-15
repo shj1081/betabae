@@ -11,6 +11,7 @@ enum OpenAIModel {
   GPT_3_5_TURBO = 'gpt-3.5-turbo',
   GPT_4 = 'gpt-4',
   GPT_4O = 'gpt-4o',
+  GPT_4O_MINI = 'gpt-4o-mini',
 }
 
 @Injectable()
@@ -28,7 +29,7 @@ export class OpenAIProvider extends LLMProviderBaseService {
   async getLLMResponse(messages: LLMMessageContext[]): Promise<string> {
     try {
       const chatCompletion = await this.openai.chat.completions.create({
-        model: OpenAIModel.GPT_4O,
+        model: OpenAIModel.GPT_4O_MINI,
         messages: messages,
         temperature: LLM_TEMPERATURE,
       });
