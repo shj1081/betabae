@@ -26,23 +26,13 @@ export class MatchScoreService {
     personalityScore: number;
     locationScore: number;
     totalScore: number;
-  } {
-    // If users are the same gender and not NON_BINARY or OTHER, return 0 for all scores
+  } | null {
+    // If users are the same gender (MALE-MALE or FEMALE-FEMALE), return null to exclude from feed
     if (
       currentUser.gender === candidateUser.gender &&
-      currentUser.gender !== Gender.NON_BINARY &&
-      currentUser.gender !== Gender.OTHER &&
-      candidateUser.gender !== Gender.NON_BINARY &&
-      candidateUser.gender !== Gender.OTHER
+      (currentUser.gender === Gender.MALE || currentUser.gender === Gender.FEMALE)
     ) {
-      return {
-        mbtiScore: 0,
-        interestsScore: 0,
-        loveLanguageScore: 0,
-        personalityScore: 0,
-        locationScore: 0,
-        totalScore: 0
-      };
+      return null; // Return null to completely exclude from feed
     }
 
     // Calculate individual similarity scores

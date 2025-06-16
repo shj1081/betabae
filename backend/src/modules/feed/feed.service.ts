@@ -55,54 +55,67 @@ export class FeedService {
     const usersInfo = await Promise.all(userInfoPromises);
     
     // Calculate match scores and create feed user DTOs
-    const feedUsers: FeedUserResponseDto[] = usersInfo.map(userInfo => {
-      // Extract candidate user features for matching
-      const candidateFeatures: UserFeatures = {
-        mbti: userInfo.profile.mbti,
-        interests: userInfo.profile.interests || [],
-        loveLang: [
-          userInfo.loveLanguage.words_of_affirmation,
-          userInfo.loveLanguage.acts_of_service,
-          userInfo.loveLanguage.receiving_gifts,
-          userInfo.loveLanguage.quality_time,
-          userInfo.loveLanguage.physical_touch,
-        ],
-        personality: [
-          userInfo.personality.openness,
-          userInfo.personality.conscientiousness,
-          userInfo.personality.extraversion,
-          userInfo.personality.agreeableness,
-          userInfo.personality.neuroticism,
-        ],
-        location: {
-          province: userInfo.profile.province,
-          city: userInfo.profile.city,
-        },
-        gender: userInfo.profile.gender as Gender,
-      };
+    // Calculate match scores and create feed user DTOs
+    const feedUsersWithNulls: (FeedUserResponseDto | null)[] = usersInfo
+      .map(userInfo => {
+        // Extract candidate user features for matching
+        const candidateFeatures: UserFeatures = {
+          mbti: userInfo.profile.mbti,
+          interests: userInfo.profile.interests || [],
+          loveLang: [
+            userInfo.loveLanguage.words_of_affirmation,
+            userInfo.loveLanguage.acts_of_service,
+            userInfo.loveLanguage.receiving_gifts,
+            userInfo.loveLanguage.quality_time,
+            userInfo.loveLanguage.physical_touch,
+          ],
+          personality: [
+            userInfo.personality.openness,
+            userInfo.personality.conscientiousness,
+            userInfo.personality.extraversion,
+            userInfo.personality.agreeableness,
+            userInfo.personality.neuroticism,
+          ],
+          location: {
+            province: userInfo.profile.province,
+            city: userInfo.profile.city,
+          },
+          gender: userInfo.profile.gender as Gender,
+        };
+        
+        // Calculate match scores
+        const matchScores = this.matchScoreService.calculateMatchScore(
+          currentUserFeatures,
+          candidateFeatures
+        );
+        
+        // If matchScores is null (same gender MALE-MALE or FEMALE-FEMALE), skip this user
+        if (matchScores === null) {
+          return null;
+        }
+        
+        // Convert to percentage for display (0-100)
+        const compatibilityScore = Math.round(matchScores.totalScore * 100);
+        
+        // Create a properly typed FeedUserResponseDto object
+        const feedUser: FeedUserResponseDto = {
+          id: userInfo.user.id,
+          nickname: userInfo.profile.nickname || '',
+          age: userInfo.profile.birthday
+            ? this.getAgeFromBirthday(userInfo.profile.birthday)
+            : 0,
+          gender: userInfo.profile.gender || '',
+          city: userInfo.profile.city || '',
+          province: userInfo.profile.province || '',
+          profileImageUrl: userInfo.profile.profile_image_url || null,
+          compatibilityScore,
+        };
+        
+        return feedUser;
+      });
       
-      // Calculate match scores
-      const matchScores = this.matchScoreService.calculateMatchScore(
-        currentUserFeatures,
-        candidateFeatures
-      );
-      
-      // Convert to percentage for display (0-100)
-      const compatibilityScore = Math.round(matchScores.totalScore * 100);
-      
-      return {
-        id: userInfo.user.id,
-        nickname: userInfo.profile.nickname || '',
-        age: userInfo.profile.birthday
-          ? this.getAgeFromBirthday(userInfo.profile.birthday)
-          : 0,
-        gender: userInfo.profile.gender || '',
-        city: userInfo.profile.city || '',
-        province: userInfo.profile.province || '',
-        profileImageUrl: userInfo.profile.profile_image_url || null,
-        compatibilityScore,
-      };
-    });
+    // Filter out null entries (users with same gender that were excluded)
+    const feedUsers = feedUsersWithNulls.filter((user): user is FeedUserResponseDto => user !== null);
 
     // Apply filters and sort by compatibility score
     return feedUsers
