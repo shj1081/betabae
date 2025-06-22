@@ -7,6 +7,26 @@
 - [racheliee](github.com/racheliee) - Backend Developer
 - [ibyeol21](github.com/ibyeol21)
 
+## Project Overview
+BetaBae is a next-generation dating application that puts emotional compatibility at the core of its user experience. Unlike traditional apps driven by photos and surface-level bios, BetaBae introduces AI-powered clone interactions, psychological profiling, and consent-driven chat initiation—creating a safer, smarter, and more empathetic dating journey.
+
+## Key Features
+
+- 🎭 Personality-Based Onboarding
+  - Uses MBTI, Big Five, Love Language, and sample conversations to build a deep psychological profile of each user.
+
+- 🧍 AI Clone Simulation
+  - Before messaging a real user, you interact with their AI clone to assess compatibility in a low-pressure environment.
+  
+- 🔓 Consent-Based Real Chat
+  - A real-time chat only unlocks after both users agree post-clone chat—reducing ghosting and awkward openers.
+  
+- 🧠 "What is RealBae Thinking?"
+  - Our GPT-4o-based message analyzer helps you decode tone and intent during conversations, reducing misunderstandings.
+
+- 📊 Compatibility Scoring System
+  - Multi-factor matching using psychological traits, interests, and location. Weighted algorithm favors emotional depth over just looks.
+
 ## Tech Stacks
 
 - Frontend: React Native (TypeScript)
@@ -51,7 +71,7 @@ betabae/
 1. Clone
 
 ```bash
-git clone https://github.com/shj1081/betabae-be
+git clone https://github.com/shj1081/betabae
 cd betabae
 ```
 
