@@ -29,7 +29,7 @@ export class OpenAIProvider extends LLMProviderBaseService {
   async getLLMResponse(messages: LLMMessageContext[]): Promise<string> {
     try {
       const chatCompletion = await this.openai.chat.completions.create({
-        model: OpenAIModel.GPT_4O_MINI,
+        model: OpenAIModel.GPT_4O,
         messages: messages,
         temperature: LLM_TEMPERATURE,
       });
